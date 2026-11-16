@@ -10,7 +10,7 @@ import re
 import sqlite3
 from datetime import date as date_cls
 
-from .. import foods
+from . import matching
 from .providers import Provider
 
 MEALS = ("breakfast", "lunch", "dinner", "snack", "other")
@@ -66,22 +66,8 @@ def parse(provider: Provider, history: list[dict], today: str, lang: str = "en",
     return {"intent": "chat"}
 
 
-def _candidates(conn, terms: list[str], state: str | None, limit: int = 6) -> list[dict]:
-    seen, out = set(), []
-    attempts = [t for t in terms if isinstance(t, str) and t.strip()]
-    if attempts:  # progressively shorter versions of the first term as a last resort
-        words = attempts[0].split()
-        attempts += [" ".join(words[:k]) for k in range(len(words) - 1, 0, -1)]
-    for t in attempts:
-        res = foods.search(conn, t, limit)
-        if res:
-            for r in res:
-                if r["id"] not in seen:
-                    seen.add(r["id"]); out.append(r)
-            break
-    if state in ("raw", "cooked"):  # stable: matching state first
-        out.sort(key=lambda r: r["state"] != state)
-    return out[:limit]
+def _candidates(conn, label, terms: list[str], state: str | None, limit: int = 6) -> list[dict]:
+    return matching.candidates(conn, label, terms, state, limit)
 
 
 _UNIT_WORDS = {"cup": ["cup"], "tbsp": ["tablespoon", "tbsp"], "tsp": ["teaspoon", "tsp"],
@@ -118,7 +104,7 @@ def _valid_date(s, today):
 
 def _match(conn, label, terms, state, quantity, unit, estimate):
     """Deterministic food match for one wording; food_id None when nothing matches."""
-    cands = _candidates(conn, terms or [], state)
+    cands = _candidates(conn, label, terms or [], state)
     if not cands:
         return {"label": label, "food_id": None, "food_name": None, "grams": None,
                 "grams_basis": "no database match found", "alternatives": []}

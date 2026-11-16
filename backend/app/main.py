@@ -1,12 +1,14 @@
 import json
 from datetime import date as date_cls
+from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import foods, jobs, plans_api, recipes_api
+from . import featured, foods, jobs, plans_api, recipes_api
 from .deps import get_conn, get_provider_factory
 from .ai import chatflow, providers
 from .engine import analysis, targets
@@ -55,6 +57,11 @@ def health():
 def search_foods(q: str = Query("", max_length=100), limit: int = Query(25, le=100),
                  conn=Depends(get_conn)):
     return foods.search(conn, q, limit)
+
+
+@app.get("/api/foods/featured")
+def featured_foods(conn=Depends(get_conn)):
+    return featured.featured(conn)
 
 
 @app.get("/api/foods/{food_id}")
@@ -230,3 +237,9 @@ def chat_stream(conv_id: int, body: ChatIn, conn=Depends(get_conn), make=Depends
 
     return StreamingResponse(jobs.stream_in_background(events, lambda: chatflow.RUNNING.discard(conv_id)),
                              media_type="application/x-ndjson")
+
+
+# One-process mode: serve the built frontend (frontend/dist) from the API server. Registered last so /api wins.
+_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if (_DIST / "index.html").is_file():
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="web")

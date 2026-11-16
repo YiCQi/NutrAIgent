@@ -172,3 +172,9 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .proposal { overflow-x: auto; }
 .proposal td:nth-child(2) { white-space: nowrap; }
 .proposal select { min-width: 9rem; }
+
+/* featured foods table */
+table.featured th, table.featured td { padding: 7px 10px; white-space: nowrap; }
+table.featured tr.clickable { cursor: pointer; }
+table.featured tbody tr:hover, table.featured tr.sel { background: var(--accent-soft); }
+table.featured th { text-transform: none; letter-spacing: 0; }

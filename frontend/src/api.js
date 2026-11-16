@@ -54,6 +54,7 @@ export const api = {
   putProfile: (p) => req("PUT", "/api/profile", p),
   getTargets: () => req("GET", "/api/targets"),
   searchFoods: (q) => req("GET", `/api/foods?q=${encodeURIComponent(q)}&limit=40`),
+  featuredFoods: () => req("GET", "/api/foods/featured"),
   getFood: (id) => req("GET", `/api/foods/${id}`),
   addIntake: (e) => req("POST", "/api/intake", e),
   deleteIntake: (id) => req("DELETE", `/api/intake/${id}`),

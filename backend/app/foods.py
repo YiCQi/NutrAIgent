@@ -5,12 +5,12 @@ import sqlite3
 
 def search(conn: sqlite3.Connection, q: str, limit: int = 25) -> list[dict]:
     """Every whitespace/comma separated token must start a word in the food name (any order)."""
-    tokens = [t for t in re.split(r"[\s,]+", q.strip()) if t]
+    tokens = [t for t in re.split(r"[\s,\-()/]+", q.strip()) if t]
 
     def esc(t):
         return t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    padded = "(' ' || replace(replace(replace(f.name, ',', ' '), '(', ' '), '-', ' '))"
+    padded = ("(' ' || replace(replace(replace(replace(replace(f.name, ',', ' '), '(', ' '), '-', ' '), ')', ' '), '/', ' '))")
     where = " AND ".join(f"{padded} LIKE ? ESCAPE '\\'" for _ in tokens) or "1=1"
     params = [f"% {esc(t)}%" for t in tokens]
     first = f"{esc(tokens[0])}%" if tokens else "%"

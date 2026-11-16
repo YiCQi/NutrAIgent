@@ -2,6 +2,9 @@
 
 Local-first, AI-powered personal nutrition management. Evidence-based targets, transparent calculations, adaptive meal planning. Health data stays on your machine.
 
+## Run
+Double-click `start.bat` (or `.\start.ps1`): serves the app at http://127.0.0.1:8000. `.\start.ps1 -Dev` for hot-reload development.
+
 ## Modules
 - **A. Nutrition profile**: age, sex, height, weight, activity, goals (muscle gain / fat loss / maintenance) -> energy and nutrient targets.
 - **B. Food database**: SQLite food-nutrient tables from UK CoFID and USDA FoodData Central. Units, serving sizes, edible portions, raw/cooked state, sources. Zero vs missing distinguished.
