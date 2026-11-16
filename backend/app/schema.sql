@@ -1,6 +1,6 @@
--- Schema v2. NULL value in food_nutrients = MISSING data; 0 = measured zero.
+-- Schema v3. NULL value in food_nutrients = MISSING data; 0 = measured zero.
 CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '2');
+INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '3');
 
 CREATE TABLE IF NOT EXISTS sources (
   id INTEGER PRIMARY KEY,
@@ -70,3 +70,6 @@ CREATE TABLE IF NOT EXISTS intake_log (
   logged_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_intake_date ON intake_log(log_date);
+
+-- Local app settings (AI provider config). api_key is stored in plaintext in this local DB.
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);

@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import ProfileTab from "./ProfileTab.jsx";
 import FoodsTab from "./FoodsTab.jsx";
 import LogTab from "./LogTab.jsx";
+import AssistantTab from "./AssistantTab.jsx";
 import "./styles.css";
 
-const TABS = ["Log", "Foods", "Profile"];
+const TABS = ["Log", "Foods", "Assistant", "Profile"];
 
 export default function App() {
   const [tab, setTab] = useState("Log");
@@ -29,6 +30,7 @@ export default function App() {
       </nav>
       {tab === "Profile" && <ProfileTab onSaved={bump} />}
       {tab === "Foods" && <FoodsTab onLogged={bump} />}
+      {tab === "Assistant" && <AssistantTab onLogged={bump} />}
       {tab === "Log" && <LogTab refreshKey={refreshKey} />}
     </main>
   );

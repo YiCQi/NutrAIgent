@@ -25,3 +25,11 @@ button.link { background: none; border: none; color: #36c; cursor: pointer; padd
 .st-low td:last-child { color: #c80; }
 .st-unknown td:last-child, .st-ok_incomplete td:last-child { color: #888; font-style: italic; }
 pre { background: #8881; padding: .5rem; overflow: auto; }
+.chat { display: flex; flex-direction: column; gap: .5rem; margin: .75rem 0; }
+.msg { padding: .5rem .75rem; border-radius: .5rem; white-space: pre-wrap; max-width: 85%; }
+.msg.user { align-self: flex-end; background: #2a72; }
+.msg.assistant { align-self: flex-start; background: #8882; }
+.chatinput { display: flex; gap: .5rem; }
+.chatinput input { flex: 1; }
+.card { border: 1px solid #2a7; border-radius: .5rem; padding: .5rem .75rem; margin: .5rem 0; }
+.tools { font-size: .8rem; color: #888; }

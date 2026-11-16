@@ -1,12 +1,12 @@
 import json
-import re
 from datetime import date as date_cls
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from . import db
+from . import db, foods
+from .ai import agent, providers, tools as ai_tools
 from .engine import analysis, targets
 
 app = FastAPI(title="NutrAIgent", version="0.1.0")
@@ -57,38 +57,15 @@ def health():
 @app.get("/api/foods")
 def search_foods(q: str = Query("", max_length=100), limit: int = Query(25, le=100),
                  conn=Depends(get_conn)):
-    # Every whitespace/comma separated token must start a word in the name (any order).
-    tokens = [t for t in re.split(r"[\s,]+", q.strip()) if t]
-    esc = lambda t: t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    padded = "(' ' || replace(replace(replace(f.name, ',', ' '), '(', ' '), '-', ' '))"
-    where = " AND ".join(f"{padded} LIKE ? ESCAPE '\\'" for _ in tokens) or "1=1"
-    params = [f"% {esc(t)}%" for t in tokens]
-    first = f"{esc(tokens[0])}%" if tokens else "%"
-    rows = conn.execute(
-        f"""SELECT f.id, f.name, f.state, f.edible_portion_pct, s.code AS source
-           FROM foods f JOIN sources s ON s.id = f.source_id
-           WHERE {where}
-           ORDER BY (f.name LIKE ? ESCAPE '\\') DESC, length(f.name), f.name LIMIT ?""",
-        (*params, first, limit),
-    ).fetchall()
-    return [dict(r) for r in rows]
+    return foods.search(conn, q, limit)
 
 
 @app.get("/api/foods/{food_id}")
 def get_food(food_id: int, conn=Depends(get_conn)):
-    f = conn.execute(
-        "SELECT f.*, s.code AS source, s.name AS source_name, s.version AS source_version "
-        "FROM foods f JOIN sources s ON s.id = f.source_id WHERE f.id = ?", (food_id,)).fetchone()
-    if f is None:
+    d = foods.detail(conn, food_id)
+    if d is None:
         raise HTTPException(404, "food not found")
-    nuts = conn.execute(
-        """SELECT n.code, n.name, n.unit, fn.value_per_100g AS value, fn.qualifier
-           FROM nutrients n LEFT JOIN food_nutrients fn ON fn.nutrient_id = n.id AND fn.food_id = ?
-           ORDER BY n.id""", (food_id,)).fetchall()
-    portions = conn.execute(
-        "SELECT id, description, grams FROM portions WHERE food_id = ? ORDER BY id", (food_id,)).fetchall()
-    return {**dict(f), "nutrients": [dict(n) for n in nuts],  # value null = missing
-            "portions": [dict(p) for p in portions]}
+    return d
 
 
 @app.put("/api/profile")
@@ -143,3 +120,68 @@ def get_intake(log_date: date_cls, conn=Depends(get_conn)):
         t = targets.compute_targets(_to_profile(row))
         intake["comparison"] = analysis.compare(intake, t["targets"])
     return intake
+
+
+# ---------------------------------------------------------------- AI (BYOK)
+AI_KEYS = ("ai_provider", "ai_model", "ai_base_url", "ai_api_key")
+
+
+def _setting(conn, key, default=""):
+    r = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return r["value"] if r else default
+
+
+class AISettingsIn(BaseModel):
+    provider: Literal["anthropic", "openai_compatible"]
+    model: str = Field(min_length=1, max_length=200)
+    base_url: str = Field("", max_length=300)
+    api_key: str | None = Field(None, max_length=500)  # None = keep existing, "" = clear
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=4000)
+
+
+class ChatIn(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
+
+
+def _ai_settings_out(conn):
+    return {"provider": _setting(conn, "ai_provider", "anthropic"), "model": _setting(conn, "ai_model"),
+            "base_url": _setting(conn, "ai_base_url"), "has_key": bool(_setting(conn, "ai_api_key"))}
+
+
+@app.get("/api/ai/settings")
+def get_ai_settings(conn=Depends(get_conn)):
+    return _ai_settings_out(conn)  # never returns the key itself
+
+
+@app.put("/api/ai/settings")
+def put_ai_settings(s: AISettingsIn, conn=Depends(get_conn)):
+    vals = {"ai_provider": s.provider, "ai_model": s.model.strip(), "ai_base_url": s.base_url.strip()}
+    if s.api_key is not None:
+        vals["ai_api_key"] = s.api_key.strip()
+    for k, v in vals.items():
+        conn.execute("INSERT INTO settings (key, value) VALUES (?,?) "
+                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (k, v))
+    conn.commit()
+    return _ai_settings_out(conn)
+
+
+def get_provider_factory():
+    """Overridable in tests."""
+    return providers.make_provider
+
+
+@app.post("/api/ai/chat")
+def ai_chat(body: ChatIn, conn=Depends(get_conn), make=Depends(get_provider_factory)):
+    cfg = providers.ProviderConfig(
+        provider=_setting(conn, "ai_provider", "anthropic"), model=_setting(conn, "ai_model"),
+        api_key=_setting(conn, "ai_api_key"), base_url=_setting(conn, "ai_base_url"))
+    try:
+        provider = make(cfg)
+        ctx = ai_tools.Context(conn=conn, today=date_cls.today().isoformat())
+        return agent.run_chat(ctx, provider, [m.model_dump() for m in body.messages])
+    except providers.ProviderError as e:
+        raise HTTPException(502, str(e))

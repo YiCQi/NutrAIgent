@@ -25,6 +25,9 @@ export const api = {
   getFood: (id) => req("GET", `/api/foods/${id}`),
   addIntake: (e) => req("POST", "/api/intake", e),
   deleteIntake: (id) => req("DELETE", `/api/intake/${id}`),
+  getAISettings: () => req("GET", "/api/ai/settings"),
+  putAISettings: (s) => req("PUT", "/api/ai/settings", s),
+  chat: (messages) => req("POST", "/api/ai/chat", { messages }),
   getIntake: (date) => req("GET", `/api/intake/${date}`),
 };
 

@@ -5,6 +5,15 @@
 - Remote: https://github.com/YiCQi/NutrAIgent. Policy: always commit and push after each task.
 - Commit identity (repo-local): YiCQi + GitHub noreply email.
 
+## Phase 2 (AI, BYOK) - built 2026-11-16, NOT yet tested against a real provider
+- `backend/app/ai/`: `providers.py` (provider-independent `Provider.complete()`; adapters `anthropic` and `openai_compatible` [OpenAI/OpenRouter/Ollama/LM Studio/etc., base_url configurable]; add new vendors via `REGISTRY`), `tools.py` (deterministic tools: search_foods, get_food, get_targets, get_daily_intake, propose_log_entries), `agent.py` (tool loop, max 6 steps, system prompt forbids stating numbers not from tools).
+- NL logging: LLM searches DB and calls `propose_log_entries`; nothing is saved until the user clicks Confirm in the UI (Assistant tab -> POST /api/intake per entry).
+- Endpoints: `GET/PUT /api/ai/settings` (key never returned; `api_key` null=keep, ""=clear), `POST /api/ai/chat` (502 with clear message on provider/config errors).
+- Settings + API key stored in table `settings` (schema v3) in the local SQLite file, PLAINTEXT. Consider OS keyring later.
+- Privacy: chat text and tool results (foods, daily intake/targets) are sent to the configured provider; UI says so.
+- 18 tests pass using scripted fake provider + httpx MockTransport. Real-API behaviour (tool-call formats, model names) unverified: needs the user's key. UI Assistant tab renders and settings API verified live; full chat flow not run.
+- `foods.py` holds shared search/detail logic. `httpx` and `openpyxl` now in pyproject deps.
+
 ## Layout
 - `backend/` FastAPI. `app/schema.sql` (schema v1), `app/db.py`, `app/engine/targets.py`, `app/engine/analysis.py`, `app/main.py` (routes under `/api`), `tests/`.
 - `frontend/` Vite + React; proxies `/api` to 127.0.0.1:8000. Tabs: Log (daily entries + intake vs targets + all totals, remove entry), Foods (word-start token search, food detail with per-100g/for-N-g nutrients, portions picker, log with meal/date), Profile (form, targets, calc trace, provisional warning). Missing data shown as "no data"/"present, amount unknown (N)"; 'trace' labelled. Verified end to end in browser (profile save -> search -> log -> comparison).
@@ -44,7 +53,8 @@
 1. Importers: SR Legacy DONE (`backend/scripts/import_usda_sr_legacy.py`). CoFID DONE (`backend/scripts/import_cofid.py`). Foundation DONE (`backend/scripts/import_usda_foundation.py`). All 3 importers done. Also TODO: populate default DB, add `openpyxl` to pyproject, merge/dedupe same food across sources (none yet).
 2. Frontend polish: edit logged grams, multi-day view, surface 'trace' flag in analysis, unit caveat for CoFID per-100ml drinks, merge/dedupe foods across sources.
 3. Micronutrient targets once reference standard chosen.
-4. Roadmap phase 2: BYOK AI provider interface.
+4. Test Phase 2 with a real key (Anthropic and an OpenAI-compatible endpoint); tune system prompt; add Gemini adapter if wanted; streaming responses; keyring for key storage; persist chat history (optional).
+5. Phase 3: meal planning.
 
 ## Open questions
 - Reference standard for micronutrient targets (UK DRVs vs others)?

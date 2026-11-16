@@ -38,7 +38,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     if "qualifier" not in cols:
         conn.execute("ALTER TABLE food_nutrients ADD COLUMN qualifier TEXT "
                      "CHECK (qualifier IS NULL OR qualifier IN ('trace','N'))")
-        conn.execute("UPDATE schema_meta SET value = '2' WHERE key = 'schema_version'")
+    conn.execute("UPDATE schema_meta SET value = '3' WHERE key = 'schema_version'")
     conn.executemany(
         "INSERT OR IGNORE INTO nutrients (code, name, unit, category) VALUES (?,?,?,?)",
         CORE_NUTRIENTS,
