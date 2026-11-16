@@ -5,12 +5,14 @@ import TodayPage from "./pages/TodayPage.jsx";
 import AssistantPage from "./pages/AssistantPage.jsx";
 import FoodsPage from "./pages/FoodsPage.jsx";
 import RecipesPage from "./pages/RecipesPage.jsx";
+import PlanPage from "./pages/PlanPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import "./app.css";
 
 const NAV = [
   ["today", "today", "nav.today"],
   ["assistant", "sparkle", "nav.assistant"],
+  ["plan", "calendar", "nav.plan"],
   ["foods", "search", "nav.foods"],
   ["recipes", "book", "nav.recipes"],
   ["profile", "user", "nav.profile"],
@@ -61,7 +63,9 @@ function Shell() {
         {!online && <div className="content" style={{ paddingBottom: 0 }}><div className="banner" style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>{t("app.offline")}</div></div>}
         <div className="content">
           {page === "today" && <TodayPage refreshKey={refreshKey} go={go} />}
-          {page === "assistant" && <AssistantPage onLogged={bump} />}
+          {/* Assistant and Plan stay mounted (hidden) so a running request keeps its progress UI */}
+          <div hidden={page !== "assistant"}><AssistantPage onLogged={bump} /></div>
+          <div hidden={page !== "plan"}><PlanPage onLogged={bump} go={go} /></div>
           {page === "foods" && <FoodsPage onLogged={bump} />}
           {page === "recipes" && <RecipesPage />}
           {page === "profile" && <ProfilePage onSaved={bump} />}

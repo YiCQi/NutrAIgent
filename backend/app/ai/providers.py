@@ -29,14 +29,15 @@ class ProviderConfig:
 class Provider:
     def __init__(self, cfg: ProviderConfig, transport: httpx.BaseTransport | None = None):
         self.cfg = cfg
-        self._client = httpx.Client(timeout=90, transport=transport)
+        self.timeout = 120  # seconds per request; long generations (meal plans) raise it
+        self._client = httpx.Client(transport=transport)
 
     def complete(self, system: str, messages: list[dict], tools: list[dict]) -> dict:
         raise NotImplementedError
 
     def _post(self, url: str, headers: dict, payload: dict) -> dict:
         try:
-            r = self._client.post(url, headers=headers, json=payload)
+            r = self._client.post(url, headers=headers, json=payload, timeout=self.timeout)
         except httpx.HTTPError as e:
             raise ProviderError(f"network error: {type(e).__name__}") from None
         if r.status_code >= 400:

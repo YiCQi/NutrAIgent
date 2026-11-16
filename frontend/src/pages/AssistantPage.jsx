@@ -65,12 +65,21 @@ function ChatPane({ convId, ready, onTitleChange, onLogged }) {
   const [steps, setSteps] = useState([]);
   const [secs, setSecs] = useState(0);
   const [err, setErr] = useState("");
+  const [resuming, setResuming] = useState(false);
   const end = useRef(null);
 
   useEffect(() => {
     setMessages([]); setErr(""); setSteps([]);
     if (convId == null) return;
-    api.getConv(convId).then((c) => setMessages(c.messages)).catch((e) => setErr(e.message));
+    let timer = null, dead = false;
+    const load = () => api.getConv(convId).then((c) => {
+      if (dead) return;
+      setMessages(c.messages);
+      setResuming(!!c.pending);
+      if (c.pending) timer = setTimeout(load, 2500);   // reply is still being produced server-side
+    }).catch((e) => !dead && setErr(e.message));
+    load();
+    return () => { dead = true; clearTimeout(timer); };
   }, [convId]);
   useEffect(() => { end.current?.scrollIntoView?.({ block: "end" }); }, [messages, steps]);
   useEffect(() => {
@@ -121,13 +130,14 @@ function ChatPane({ convId, ready, onTitleChange, onLogged }) {
             <ul>{steps.map((x, i) => <li key={i} className={x.done ? "done" : ""}>{x.done ? "✓" : "…"} {x.text}</li>)}</ul>
           </div>
         )}
+        {resuming && !busy && <div className="bubble assistant progress"><div className="indet"><span /></div>{t("assistant.resuming")}</div>}
         <div ref={end} />
       </div>
       {err && <p className="err">{err}</p>}
       <form className="composer" onSubmit={(e) => { e.preventDefault(); send(input); }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} disabled={!ready || busy || convId == null}
+        <input value={input} onChange={(e) => setInput(e.target.value)} disabled={!ready || busy || resuming || convId == null}
                placeholder={ready ? t("assistant.placeholder") : t("assistant.notReady")} />
-        <button className="btn" type="submit" disabled={!ready || busy || !input.trim() || convId == null}>↑</button>
+        <button className="btn" type="submit" disabled={!ready || busy || resuming || !input.trim() || convId == null}>↑</button>
       </form>
     </div>
   );

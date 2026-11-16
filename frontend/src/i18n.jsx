@@ -65,6 +65,20 @@ const en = {
   "status.thinking": "Thinking…", "status.tool_search_foods": "Searching foods: {arg}", "status.tool_get_food": "Reading food details",
   "status.tool_get_targets": "Reading your targets", "status.tool_get_daily_intake": "Reading intake for {arg}",
   "status.sending": "Sending…",
+  "nav.plan": "Meal plan",
+  "plan.title": "Weekly meal plan", "plan.generate": "New plan", "plan.start": "Start date", "plan.days": "Days", "plan.meals": "Meals",
+  "plan.notes": "Preferences for this plan", "plan.notesPh": "e.g. Chinese home cooking, no beef, I have chicken thighs and broccoli…",
+  "plan.go": "Generate", "plan.empty": "No meal plan yet",
+  "plan.emptyHint": "Generate a plan that fits your daily targets. The AI suggests the dishes; amounts and nutrition are calculated from the food database.",
+  "plan.needProfile": "Set up your profile first — the plan is built around your targets.", "plan.needAi": "Add your AI provider and key in the Assistant settings first.",
+  "plan.working": "Generating… {s}s", "plan.delete": "Delete plan", "plan.confirmDelete": "Delete this plan?",
+  "plan.logMeal": "Log meal", "plan.logDay": "Log whole day", "plan.logged": "Logged {n} items for {date}", "plan.regen": "Regenerate day",
+  "plan.addItem": "Add food", "plan.dropped": "{n} suggested item(s) could not be matched to the database and were skipped.",
+  "plan.pending": "This plan is still being generated…", "plan.p": "Protein", "plan.c": "Carbs", "plan.f": "Fat", "plan.kcal": "kcal",
+  "plan.hint": "Nutrition is always computed from the database. Amounts are scaled so each day lands near your energy target (within limits).",
+  "plan.searchFood": "Search a food (English)…",
+  "status.plan_asking": "Asking the AI to plan {arg} day(s)…", "status.plan_day_done": "Planned {arg}",
+  "assistant.resuming": "Still working on your last message…",
 };
 
 const zh = {
@@ -132,6 +146,20 @@ const zh = {
   "status.thinking": "思考中…", "status.tool_search_foods": "搜索食物：{arg}", "status.tool_get_food": "读取食物详情",
   "status.tool_get_targets": "读取你的目标", "status.tool_get_daily_intake": "读取 {arg} 的摄入",
   "status.sending": "发送中…",
+  "nav.plan": "饮食计划",
+  "plan.title": "每周饮食计划", "plan.generate": "新计划", "plan.start": "开始日期", "plan.days": "天数", "plan.meals": "餐次",
+  "plan.notes": "这份计划的偏好", "plan.notesPh": "例如：中式家常菜、不吃牛肉、家里有鸡腿和西兰花…",
+  "plan.go": "生成", "plan.empty": "还没有饮食计划",
+  "plan.emptyHint": "生成一份符合你每日目标的计划。AI 只负责推荐菜品，克数和营养都由食物数据库计算。",
+  "plan.needProfile": "请先设置个人资料——计划是围绕你的目标生成的。", "plan.needAi": "请先在“AI 助手”的设置里填写 AI 服务和密钥。",
+  "plan.working": "生成中… {s} 秒", "plan.delete": "删除计划", "plan.confirmDelete": "删除这份计划？",
+  "plan.logMeal": "记录这一餐", "plan.logDay": "记录整天", "plan.logged": "已把 {n} 项记录到 {date}", "plan.regen": "重新生成这一天",
+  "plan.addItem": "添加食物", "plan.dropped": "有 {n} 项推荐在数据库中找不到匹配，已跳过。",
+  "plan.pending": "这份计划还在生成中…", "plan.p": "蛋白质", "plan.c": "碳水", "plan.f": "脂肪", "plan.kcal": "千卡",
+  "plan.hint": "营养始终由数据库计算。克数会按比例调整，使每天接近你的能量目标（有上下限）。",
+  "plan.searchFood": "搜索食物（英文）…",
+  "status.plan_asking": "正在请 AI 规划 {arg} 天…", "status.plan_day_done": "已规划 {arg}",
+  "assistant.resuming": "仍在处理你上一条消息…",
 };
 
 const DICT = { en, zh };

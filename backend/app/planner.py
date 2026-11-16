@@ -25,13 +25,16 @@ User preferences / restrictions: <<prefs>>
 Saved recipes the user can reuse: <<recipes>>
 Main dishes already planned earlier this week (avoid repeating them): <<planned>>
 Reply with ONE JSON object and nothing else:
-{"meals":[{"meal":"breakfast|lunch|dinner|snack","items":[{"label":"food or dish as a person would say it","search_terms":["english database name","simpler english name"],"state":"raw|cooked|any","grams":number}]}]}
+{"breakfast":[[label, english_database_name, grams], ...], "lunch":[...], "dinner":[...], "snack":[...]}
+(only the requested meals; label = food as a person would say it in the label language; english_database_name = USDA/UK style name; grams = number)
 Rules:
 - Practical home-style meals (Chinese home cooking when the label language is Chinese). 3-7 items per meal.
 - Split a cooked dish into its main ingredients plus cooking oil and key seasonings (soy sauce, salt, sugar) with realistic grams.
 - Each main meal has a protein source and vegetables. Vary foods across days. Respect the restrictions strictly.
 - grams = weight as eaten (cooked weight for cooked foods). Stay near the targets, a rough total is fine: the app rescales exactly.
-- For a saved recipe use its exact name as the first search term and the amount in grams of the finished dish.
+- For a saved recipe use its exact name as english_database_name and the grams of the finished dish.
+- english_database_name must follow USDA naming: category first, then the form/preparation, as specific as possible, e.g. "Rice, white, long-grain, cooked" (use "glutinous" only for sticky rice), "Oil, peanut", "Broccoli, cooked, boiled, drained", "Sweet potato, cooked, baked", "Egg, whole, cooked, hard-boiled", "Chicken, thigh, meat only, cooked", "Soy sauce", "Pork, loin, lean, cooked", "Tofu, firm". Wheat buns/mantou: "Bread, steamed" style names are rare, so use "Bread, whole-wheat" or "Rolls, hamburger or hotdog" only if nothing closer.
+- Be concise: no explanations, no extra fields.
 - Database names are English (USDA/UK style, e.g. "Rice, white, cooked", "Pork, loin, lean, cooked", "Soy sauce"). Never output nutrient values."""
 
 
@@ -79,26 +82,37 @@ def _round_g(g: float) -> float:
     return float(round(g / 5) * 5) if g >= 20 else round(g * 2) / 2
 
 
+def _day_items(proposal: dict, meals):
+    """Normalise the model output to (meal, label, search_terms, grams). Accepts {meal: [[label, name, grams]]}
+    and the older {"meals":[{"meal","items":[{label,search_terms,grams}]}]} shape."""
+    out = []
+    if isinstance(proposal.get("meals"), list):
+        for m in proposal["meals"]:
+            for it in (m.get("items") or []) if isinstance(m, dict) else []:
+                if isinstance(it, dict):
+                    out.append((m.get("meal"), it.get("label"), it.get("search_terms"), it.get("grams"), it.get("state")))
+        return out
+    for meal in meals:
+        for it in (proposal.get(meal) or [])[:12]:
+            if isinstance(it, (list, tuple)) and len(it) >= 3:
+                out.append((meal, it[0], [str(it[1])], it[2], None))
+    return out
+
+
 def match_day(conn, proposal: dict, kcal_target: float, meals) -> tuple[list[dict], int]:
     """Match proposed items to DB foods and scale the day to the energy target. Returns (items, dropped)."""
     items, dropped = [], 0
-    for m in proposal.get("meals") or []:
-        meal = m.get("meal") if m.get("meal") in MEALS else None
-        if meal is None or meal not in meals:
+    for meal, label, terms, g, state in _day_items(proposal, meals):
+        if meal not in meals:
             continue
-        for pos, it in enumerate((m.get("items") or [])[:12]):
-            if not isinstance(it, dict):
-                continue
-            g = it.get("grams")
-            if not isinstance(g, (int, float)) or not 0 < g <= 3000:
-                dropped += 1
-                continue
-            r = nllog._match(conn, str(it.get("label") or "?")[:80], it.get("search_terms"), it.get("state"),
-                             None, None, g)
-            if r["food_id"] is None:
-                dropped += 1
-                continue
-            items.append({"meal": meal, "label": r["label"], "food_id": r["food_id"], "grams": float(g)})
+        if not isinstance(g, (int, float)) or isinstance(g, bool) or not 0 < g <= 3000:
+            dropped += 1
+            continue
+        r = nllog._match(conn, str(label or "?")[:80], terms, state, None, None, g)
+        if r["food_id"] is None:
+            dropped += 1
+            continue
+        items.append({"meal": meal, "label": r["label"], "food_id": r["food_id"], "grams": float(g)})
     total = sum((_food_nutrients(conn, i["food_id"]).get("energy_kcal") or 0) * i["grams"] / 100 for i in items)
     if total > 0 and kcal_target > 0:
         s = max(SCALE_MIN, min(SCALE_MAX, kcal_target / total))
@@ -127,6 +141,7 @@ def generate(conn, provider: Provider, plan_id: int, dates: list[str], lang: str
     systems = {d: _prompt(d, lang, targets, meals, prefs + f" (this is day {i + 1} of {len(dates)}; make it different from the other days)",
                           names, []) for i, d in enumerate(dates)}
     dropped_total = 0
+    provider.timeout = 300  # a whole day of JSON can take minutes on slow endpoints
     with ThreadPoolExecutor(max_workers=min(4, len(dates))) as ex:
         futs = {ex.submit(propose_day, provider, systems[d]): d for d in dates}
         for fut in as_completed(futs):

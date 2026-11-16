@@ -60,6 +60,13 @@ def test_match_day_scales_to_energy_target(conn):
     assert items[0]["grams"] == 180.0
 
 
+def test_compact_array_format(conn):
+    prop = {"breakfast": [["燕麦", "oats raw", 150]], "lunch": [["鸡胸肉", "chicken breast cooked", 300], ["坏", "zzzz", 10], ["x", "rice", "bad"]],
+            "snack": [["米饭", "rice white cooked", 100]]}
+    items, dropped = planner.match_day(conn, prop, 1000, ("breakfast", "lunch", "dinner"))
+    assert {i["meal"] for i in items} == {"breakfast", "lunch"} and dropped == 2  # snack not requested
+
+
 def test_generate_view_edit_log(client, conn):
     assert client.post("/api/plans/generate", json={"start_date": "2026-01-05", "days": 2}).status_code == 409  # no profile
     client.put("/api/profile", json=PROFILE)

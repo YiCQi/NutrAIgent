@@ -9,6 +9,7 @@ const PATHS = {
   trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
   left: "M15 6l-6 6 6 6",
   right: "M9 6l6 6-6 6",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
   leaf: "M5 19c0-9 5-14 15-14 0 10-5 15-14 15M5 19l7-7",
 };
 
