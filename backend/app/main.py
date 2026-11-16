@@ -6,20 +6,14 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import db, foods
+from . import foods, recipes_api
+from .deps import get_conn
 from .ai import chatflow, providers
 from .engine import analysis, targets
 
 NL = chr(10)
 app = FastAPI(title="NutrAIgent", version="0.1.0")
-_conn = None
-
-
-def get_conn():
-    global _conn
-    if _conn is None:
-        _conn = db.connect()
-    return _conn
+app.include_router(recipes_api.router)
 
 
 class ProfileIn(BaseModel):
@@ -142,6 +136,7 @@ class AISettingsIn(BaseModel):
 
 class ChatIn(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
+    lang: Literal["en", "zh"] = "en"
 
 
 class StatusIn(BaseModel):
@@ -231,7 +226,7 @@ def chat_stream(conv_id: int, body: ChatIn, conn=Depends(get_conn), make=Depends
     def gen():
         try:
             provider = make(cfg)
-            for ev in chatflow.run_turn(conn, provider, conv_id, body.content, date_cls.today().isoformat()):
+            for ev in chatflow.run_turn(conn, provider, conv_id, body.content, date_cls.today().isoformat(), body.lang):
                 yield json.dumps(ev, default=str) + NL
         except providers.ProviderError as e:
             yield json.dumps({"type": "error", "message": str(e)}) + NL

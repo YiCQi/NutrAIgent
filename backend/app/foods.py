@@ -18,7 +18,7 @@ def search(conn: sqlite3.Connection, q: str, limit: int = 25) -> list[dict]:
         f"""SELECT f.id, f.name, f.state, f.edible_portion_pct, s.code AS source
            FROM foods f JOIN sources s ON s.id = f.source_id
            WHERE {where}
-           ORDER BY (f.name LIKE ? ESCAPE '\\') DESC, length(f.name), f.name LIMIT ?""",
+           ORDER BY (s.code = 'user_recipe') DESC, (f.name LIKE ? ESCAPE '\\') DESC, length(f.name), f.name LIMIT ?""",
         (*params, first, limit),
     ).fetchall()
     return [dict(r) for r in rows]

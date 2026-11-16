@@ -15,26 +15,40 @@ from .providers import Provider
 
 MEALS = ("breakfast", "lunch", "dinner", "snack", "other")
 
-PARSE_SYSTEM = """You are the parser of a nutrition-tracking app. Today is {today}.
-Read the user's latest message (earlier messages are context) and reply with ONE JSON object, nothing else.
-If the user is reporting food or drink they consumed (or asking to log it):
-{{"intent":"log","items":[{{
-  "label":"the food as the user wrote it",
+PARSE_SYSTEM = """You are the parser of a nutrition-tracking app. Today is <<today>>. The user's language: <<lang>>.
+Saved recipes (the user's own dishes): <<recipes>>
+Read the user's latest message (earlier messages are context) and reply with ONE JSON object, nothing else. Choose one:
+
+1) The user reports food or drink they consumed and you have enough information:
+{"intent":"log","items":[ITEM, ...]}
+ITEM = {"label":"the food as the user wrote it",
   "search_terms":["english database name","simpler english name","even simpler"],
-  "state":"raw|cooked|any",
-  "quantity":number or null,"unit":"g|ml|piece|slice|cup|bowl|tbsp|tsp|serving|null",
-  "grams_estimate":typical total weight in grams of what the user ate (number),
-  "meal":"breakfast|lunch|dinner|snack|other","date":"YYYY-MM-DD or null for today"}}]}}
-One item per food or dish the user ate. Do NOT split a dish into seasonings or cooking ingredients (no soy sauce, sugar, oil items unless the user ate them on their own). Use the closest generic database food for a dish (e.g. braised pork ribs -> "pork spare ribs braised cooked"). Only split when the message clearly lists separate foods or drinks; "coffee with soy milk" is two items.
-Otherwise (questions, advice, intake/targets queries, chat):
-{{"intent":"chat"}}
-Database food names are English (USDA/UK style, e.g. "Rice, white, cooked", "Okra, cooked, boiled"). Never output nutrient values."""
+  "state":"raw|cooked|any", "quantity":number or null, "unit":"g|ml|piece|slice|cup|bowl|tbsp|tsp|serving|null",
+  "grams_estimate":typical total weight in grams of what was eaten,
+  "meal":"breakfast|lunch|dinner|snack|other", "date":"YYYY-MM-DD or null for today"}
+- Normal food, or one of the saved recipes: plain ITEM (for a saved recipe put its exact name first in search_terms).
+- Home-cooked composite dish that is NOT a saved recipe: add to the ITEM
+  "recipe_name":"short dish name in the user's language" and
+  "ingredients":[{"label":"...","search_terms":[...],"state":"raw|cooked|any","grams_estimate":grams in the portion eaten}]
+  listing the main food AND every seasoning, oil or sauce the user mentioned (salt, soy sauce, sugar, oyster sauce, oil...).
+  The ITEM's grams_estimate is the total weight of the dish eaten.
+- Separate foods or drinks are separate items ("coffee with soy milk" is two items).
+
+2) Information that matters is missing: {"intent":"ask","question":"..."} written in the user's language.
+Ask when a home-cooked composite dish is reported without its seasonings/ingredients (ask which seasonings and roughly how much; mention you can save it as a recipe), when the amount of a MAIN item is unclear, or when the food is ambiguous. Put all missing points in ONE short message with a brief example of an acceptable answer.
+Do NOT ask again if an earlier assistant message already asked and the user answered or said they do not know / skip: then proceed with typical estimates. Do NOT ask about trivial items (a coffee, a piece of fruit): use typical amounts.
+
+3) Anything else (questions, advice, intake or targets queries, chat): {"intent":"chat"}
+
+Database food names are English (USDA/UK style, e.g. "Rice, white, cooked", "Soy sauce", "Salt, table"). Never output nutrient values."""
 
 
-def parse(provider: Provider, history: list[dict], today: str) -> dict:
+def parse(provider: Provider, history: list[dict], today: str, lang: str = "en", recipe_names=()) -> dict:
     """One model call. Returns {'intent': 'chat'} if the output is not usable JSON."""
-    resp = provider.complete(PARSE_SYSTEM.format(today=today),
-                             [{"role": m["role"], "content": m["content"]} for m in history], [])
+    system = (PARSE_SYSTEM.replace("<<today>>", today)
+              .replace("<<lang>>", "Chinese (简体中文)" if lang == "zh" else "English")
+              .replace("<<recipes>>", json.dumps(list(recipe_names), ensure_ascii=False) if recipe_names else "none"))
+    resp = provider.complete(system, [{"role": m["role"], "content": m["content"]} for m in history], [])
     text = "".join(b["text"] for b in resp["content"] if b["type"] == "text")
     a, b = text.find("{"), text.rfind("}")
     if a < 0 or b <= a:
@@ -43,7 +57,13 @@ def parse(provider: Provider, history: list[dict], today: str) -> dict:
         data = json.loads(text[a:b + 1])
     except ValueError:
         return {"intent": "chat"}
-    return data if isinstance(data, dict) and data.get("intent") == "log" else {"intent": "chat"}
+    if not isinstance(data, dict):
+        return {"intent": "chat"}
+    if data.get("intent") == "log":
+        return data
+    if data.get("intent") == "ask" and isinstance(data.get("question"), str) and data["question"].strip():
+        return data
+    return {"intent": "chat"}
 
 
 def _candidates(conn, terms: list[str], state: str | None, limit: int = 6) -> list[dict]:
@@ -96,27 +116,54 @@ def _valid_date(s, today):
         return today
 
 
+def _match(conn, label, terms, state, quantity, unit, estimate):
+    """Deterministic food match for one wording; food_id None when nothing matches."""
+    cands = _candidates(conn, terms or [], state)
+    if not cands:
+        return {"label": label, "food_id": None, "food_name": None, "grams": None,
+                "grams_basis": "no database match found", "alternatives": []}
+    top = cands[0]
+    grams, basis = resolve_grams(conn, top["id"], quantity, unit, estimate)
+    return {"label": label, "food_id": top["id"], "food_name": top["name"], "source": top["source"],
+            "grams": grams, "grams_basis": basis,
+            "alternatives": [{"food_id": c["id"], "food_name": c["name"], "source": c["source"]} for c in cands]}
+
+
 def build_proposals(conn: sqlite3.Connection, parsed: dict, today: str):
-    """Yield ('match', label) progress then finally ('done', proposals)."""
+    """Yield ('match', label) progress then finally ('done', proposals).
+
+    proposal kinds: 'food' (one matched food) | 'recipe' (composite dish: ingredients + yield + save flag).
+    """
     proposals = []
     for it in (parsed.get("items") or [])[:15]:
         if not isinstance(it, dict):
             continue
         label = str(it.get("label") or "?")[:80]
         yield "match", label
-        cands = _candidates(conn, it.get("search_terms") or [], it.get("state"))
         meal = it.get("meal") if it.get("meal") in MEALS else "other"
         day = _valid_date(it.get("date"), today)
-        if not cands:
-            proposals.append({"label": label, "food_id": None, "food_name": None, "grams": None,
-                              "grams_basis": "no database match found", "meal": meal, "log_date": day,
-                              "alternatives": []})
+        ings = it.get("ingredients")
+        if isinstance(ings, list) and ings:
+            rows = []
+            for ing in ings[:25]:
+                if not isinstance(ing, dict):
+                    continue
+                r = _match(conn, str(ing.get("label") or "?")[:80], ing.get("search_terms"), ing.get("state"),
+                           None, None, ing.get("grams_estimate"))
+                if r["food_id"] is not None and r["grams_basis"].startswith("default"):
+                    r["grams_basis"] = "no amount given (default 10 g, please set)"
+                    r["grams"] = 10.0
+                rows.append(r)
+            total = round(sum(r["grams"] or 0 for r in rows), 1)
+            eat = it.get("grams_estimate")
+            proposals.append({
+                "kind": "recipe", "label": label,
+                "name": str(it.get("recipe_name") or label)[:80], "save": True,
+                "yield_g": total, "eat_g": float(eat) if isinstance(eat, (int, float)) and 0 < eat <= 5000 else total,
+                "ingredients": rows, "meal": meal, "log_date": day})
             continue
-        top = cands[0]
-        grams, basis = resolve_grams(conn, top["id"], it.get("quantity"), it.get("unit"), it.get("grams_estimate"))
-        proposals.append({
-            "label": label, "food_id": top["id"], "food_name": top["name"], "source": top["source"],
-            "grams": grams, "grams_basis": basis, "meal": meal, "log_date": day,
-            "alternatives": [{"food_id": c["id"], "food_name": c["name"], "source": c["source"]} for c in cands],
-        })
+        r = _match(conn, label, it.get("search_terms"), it.get("state"), it.get("quantity"), it.get("unit"),
+                   it.get("grams_estimate"))
+        r.update({"kind": "food", "meal": meal, "log_date": day})
+        proposals.append(r)
     yield "done", proposals

@@ -1,6 +1,6 @@
--- Schema v4. NULL value in food_nutrients = MISSING data; 0 = measured zero.
+-- Schema v5. NULL value in food_nutrients = MISSING data; 0 = measured zero.
 CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '4');
+INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '5');
 
 CREATE TABLE IF NOT EXISTS sources (
   id INTEGER PRIMARY KEY,
@@ -90,3 +90,20 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);
+
+-- User recipes: the recipe is also a row in foods (source 'user_recipe'); nutrients are computed from ingredients.
+CREATE TABLE IF NOT EXISTS recipes (
+  food_id INTEGER PRIMARY KEY REFERENCES foods(id) ON DELETE CASCADE,
+  yield_g REAL NOT NULL CHECK (yield_g > 0),   -- cooked weight of the whole batch
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS recipe_ingredients (
+  id INTEGER PRIMARY KEY,
+  recipe_food_id INTEGER NOT NULL REFERENCES recipes(food_id) ON DELETE CASCADE,
+  food_id INTEGER NOT NULL REFERENCES foods(id),
+  grams REAL NOT NULL CHECK (grams > 0),
+  position INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_recipe_ing ON recipe_ingredients(recipe_food_id);

@@ -15,14 +15,14 @@ Rules:
 - Defaults in targets are provisional; mention this if the user relies on them. Asking a short clarifying question is fine."""
 
 
-def iter_chat(ctx: tools.Context, provider: Provider, history: list[dict]):
+def iter_chat(ctx: tools.Context, provider: Provider, history: list[dict], lang: str = "en"):
     """Generator of progress events; the last event has type 'done'.
 
     Events: {"type":"model","step":n} | {"type":"tool","tool","input"} |
             {"type":"tool_done","tool","error"} | {"type":"done","reply","trace"}
     """
     messages = [{"role": m["role"], "content": m["content"]} for m in history]
-    system = SYSTEM.format(today=ctx.today)
+    system = SYSTEM.format(today=ctx.today) + ("\nAlways reply in Simplified Chinese." if lang == "zh" else "")
     trace = []
     for step in range(1, MAX_STEPS + 1):
         yield {"type": "model", "step": step}
