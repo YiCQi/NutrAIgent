@@ -108,7 +108,7 @@ def test_recipe_proposal_from_ingredients(conn):
             {"label": "神秘酱", "search_terms": ["zzzz"], "grams_estimate": 5}]}]}
     out = list(nllog.build_proposals(conn, parsed, "2026-01-02"))[-1][1]
     rec = out[0]
-    assert rec["kind"] == "recipe" and rec["save"] is True and rec["eat_g"] == 250.0
+    assert rec["kind"] == "recipe" and rec["save"] is False and rec["eat_g"] == 250.0
     assert [i["food_name"] for i in rec["ingredients"]] == ["Pork, spare ribs, braised", "Soy sauce", "Salt, table", None]
     assert rec["yield_g"] == 217.0  # unmatched row has no grams
 
@@ -131,3 +131,24 @@ def test_parse_includes_saved_recipe_names(conn):
     p = Scripted([text('{"intent":"chat"}')])
     nllog.parse(p, [{"role": "user", "content": "x"}], "2026-01-02", "en", recipes.names(conn))
     assert "红烧排骨" in p.seen[0][0]
+
+
+def test_predicted_sauce_flags_totals_and_per100(conn):
+    parsed = {"intent": "log", "items": [{
+        "label": "红烧排骨", "recipe_name": "红烧排骨", "total_g": 300, "grams_estimate": 150, "meal": "dinner",
+        "ingredients": [
+            {"label": "排骨", "search_terms": ["pork spare ribs braised"], "role": "main", "predicted": False,
+             "grams_estimate": 200},
+            {"label": "酱油", "search_terms": ["soy sauce"], "role": "sauce", "predicted": True, "grams_estimate": 15},
+            {"label": "神秘酱", "search_terms": ["zzzz"], "role": "sauce", "predicted": True, "grams_estimate": 5}]}]}
+    rec = list(nllog.build_proposals(conn, parsed, "2026-01-02"))[-1][1][0]
+    main, soy, nothing = rec["ingredients"]
+    assert (main["role"], main["predicted"]) == ("main", False)
+    assert main["grams_basis"] == "typical weight estimated by the AI (please check)"
+    assert (soy["role"], soy["predicted"], soy["grams_basis"]) == ("sauce", True, "predicted by AI (please check)")
+    assert soy["grams"] == 15.0 and soy["per100"]["fibre_g"] is None  # missing stays None, not 0
+    assert nothing["food_id"] is None and nothing["per100"] == {} and nothing["role"] == "sauce"
+    assert rec["yield_g"] == 300.0 and rec["eat_g"] == 150.0  # model total_g used as cooked weight
+    no_total = dict(parsed["items"][0]); del no_total["total_g"]
+    rec2 = list(nllog.build_proposals(conn, {"items": [no_total]}, "2026-01-02"))[-1][1][0]
+    assert rec2["yield_g"] == 215.0  # no total_g: falls back to ingredient sum (unmatched row adds nothing)

@@ -236,3 +236,11 @@ def test_chat_errors(client):
     r = client.post(f"/api/conversations/{cid}/chat", json={"content": "hi"})  # no key configured
     assert events(r)[0] == {"type": "error", "message": "model not set"}
     assert client.post("/api/conversations/999/chat", json={"content": "hi"}).status_code == 404
+
+
+def test_parse_prompt_lists_logged_items_and_breakdown_rules():
+    p = Scripted([text('{"intent":"chat"}')])
+    nllog.parse(p, [{"role": "user", "content": "x"}], "2026-01-02", "zh", (), ["Pork, braised 400 g (lunch)"])
+    system = p.seen[0][0]
+    assert "Pork, braised 400 g (lunch)" in system and "Break it down finely" in system
+    assert "Skip an item ONLY" in system

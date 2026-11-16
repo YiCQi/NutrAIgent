@@ -75,6 +75,20 @@ function Shell() {
   );
 }
 
+// Tell the local server a page is open (every 15 s) and that it closed (pagehide). See backend/app/presence.py.
+function usePresence() {
+  useEffect(() => {
+    const client = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const ping = () => fetch(`/api/presence/ping?client=${client}`, { method: "POST" }).catch(() => {});
+    const bye = () => navigator.sendBeacon?.(`/api/presence/bye?client=${client}`);
+    ping();
+    const timer = setInterval(ping, 15000);
+    window.addEventListener("pagehide", bye);
+    return () => { clearInterval(timer); window.removeEventListener("pagehide", bye); };
+  }, []);
+}
+
 export default function App() {
+  usePresence();
   return <I18nProvider><Shell /></I18nProvider>;
 }

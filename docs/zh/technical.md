@@ -89,8 +89,8 @@ backend/scripts/import_usda_foundation.py  [--json 文件] [--db 路径]
 ## 开发者命令
 
 ```
-.\start.ps1               如需则构建前端，并在 8000 端口运行应用
-.\start.ps1 -Dev          后端（8000）与带热更新的 Vite 开发服务器（5173）
+.\start.ps1               如需则构建前端，并在 8100–8199 中第一个空闲端口运行应用
+.\start.ps1 -Dev          后端（8100–8199 自动选择）与带热更新的 Vite 开发服务器（5173）
 .\start.ps1 -Port 9000 -NoBrowser
 ```
 

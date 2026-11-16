@@ -17,6 +17,7 @@ MEALS = ("breakfast", "lunch", "dinner", "snack", "other")
 
 PARSE_SYSTEM = """You are the parser of a nutrition-tracking app. Today is <<today>>. The user's language: <<lang>>.
 Saved recipes (the user's own dishes): <<recipes>>
+Already logged today: <<logged>>. Skip an item ONLY when the user clearly refers to food already logged (leftovers, "the rest of it", "same as lunch", "the earlier one"). Food the user describes as eaten now is a NEW entry, even if a similar item is already logged.
 Read the user's latest message (earlier messages are context) and reply with ONE JSON object, nothing else. Choose one:
 
 1) The user reports food or drink they consumed and you have enough information:
@@ -27,15 +28,23 @@ ITEM = {"label":"the food as the user wrote it",
   "grams_estimate":typical total weight in grams of what was eaten,
   "meal":"breakfast|lunch|dinner|snack|other", "date":"YYYY-MM-DD or null for today"}
 - Normal food, or one of the saved recipes: plain ITEM (for a saved recipe put its exact name first in search_terms).
-- Home-cooked composite dish that is NOT a saved recipe: add to the ITEM
-  "recipe_name":"short dish name in the user's language" and
-  "ingredients":[{"label":"...","search_terms":[...],"state":"raw|cooked|any","grams_estimate":grams in the portion eaten}]
-  listing the main food AND every seasoning, oil or sauce the user mentioned (salt, soy sauce, sugar, oyster sauce, oil...).
-  The ITEM's grams_estimate is the total weight of the dish eaten.
+- Any dish, meal or drink made of SEVERAL components (a cooked dish, a stir-fry, a drink with several ingredients such as oats + honey + milk), and not a saved recipe: add to the ITEM
+  "recipe_name":"short dish name in the user's language",
+  "total_g": estimated weight of the WHOLE cooked dish (all of it, not the portion eaten),
+  "ingredients":[{"label":"...","search_terms":[...],"state":"raw|cooked|any","role":"main|sauce",
+    "predicted":true|false,"grams_estimate":grams of this ingredient in the WHOLE dish}]
+  - Break it down finely: one ingredient row for EVERY component the user named AND every ingredient the preparation needs (cooking oil, garlic, ginger, salt, soy sauce, sugar, honey or other sweeteners, milk or soy milk, grains, vegetables, sauces). Never merge two components into one row; never drop a vegetable, grain or sweetener the user mentioned.
+  - The main food(s): role "main".
+  - Every seasoning, oil, sauce or condiment: role "sauce" (salt, sugar, soy sauce, oyster sauce, vinegar, cooking wine, cornstarch, cooking oil...).
+  - Sauces/seasonings the user NAMED: "predicted":false, use the stated amount if given.
+  - Sauces/seasonings the user did NOT name but a typical version of this dish uses: "predicted":true with a typical amount.
+    Predict them yourself; do NOT ask the user about seasonings.
+  - The ingredient grams should add up to roughly total_g.
+  The ITEM's grams_estimate is the weight of the portion the user ate (the whole dish if no portion was given).
 - Separate foods or drinks are separate items ("coffee with soy milk" is two items).
 
 2) Information that matters is missing: {"intent":"ask","question":"..."} written in the user's language.
-Ask when a home-cooked composite dish is reported without its seasonings/ingredients (ask which seasonings and roughly how much; mention you can save it as a recipe), when the amount of a MAIN item is unclear, or when the food is ambiguous. Put all missing points in ONE short message with a brief example of an acceptable answer.
+Ask when the amount of a MAIN item is unclear, or when the food is ambiguous. Never ask about seasonings or sauces: predict them (see above). Put all missing points in ONE short message with a brief example of an acceptable answer.
 Do NOT ask again if an earlier assistant message already asked and the user answered or said they do not know / skip: then proceed with typical estimates. Do NOT ask about trivial items (a coffee, a piece of fruit): use typical amounts.
 
 3) Anything else (questions, advice, intake or targets queries, chat): {"intent":"chat"}
@@ -43,11 +52,12 @@ Do NOT ask again if an earlier assistant message already asked and the user answ
 Database food names are English (USDA/UK style, e.g. "Rice, white, cooked", "Soy sauce", "Salt, table"). Never output nutrient values."""
 
 
-def parse(provider: Provider, history: list[dict], today: str, lang: str = "en", recipe_names=()) -> dict:
+def parse(provider: Provider, history: list[dict], today: str, lang: str = "en", recipe_names=(), logged=()) -> dict:
     """One model call. Returns {'intent': 'chat'} if the output is not usable JSON."""
     system = (PARSE_SYSTEM.replace("<<today>>", today)
               .replace("<<lang>>", "Chinese (简体中文)" if lang == "zh" else "English")
-              .replace("<<recipes>>", json.dumps(list(recipe_names), ensure_ascii=False) if recipe_names else "none"))
+              .replace("<<recipes>>", json.dumps(list(recipe_names), ensure_ascii=False) if recipe_names else "none")
+              .replace("<<logged>>", "; ".join(logged) if logged else "nothing yet"))
     resp = provider.complete(system, [{"role": m["role"], "content": m["content"]} for m in history], [])
     text = "".join(b["text"] for b in resp["content"] if b["type"] == "text")
     a, b = text.find("{"), text.rfind("}")
@@ -102,17 +112,28 @@ def _valid_date(s, today):
         return today
 
 
+def per100(conn, food_id: int) -> dict:
+    """Per-100 g values of one food, keyed by nutrient code. None = missing (qualifier 'N' or no row)."""
+    return {r["code"]: r["value_per_100g"] for r in conn.execute(
+        """SELECT n.code, fn.value_per_100g FROM nutrients n
+           LEFT JOIN food_nutrients fn ON fn.nutrient_id = n.id AND fn.food_id = ?""", (food_id,))}
+
+
 def _match(conn, label, terms, state, quantity, unit, estimate):
     """Deterministic food match for one wording; food_id None when nothing matches."""
     cands = _candidates(conn, label, terms or [], state)
     if not cands:
         return {"label": label, "food_id": None, "food_name": None, "grams": None,
-                "grams_basis": "no database match found", "alternatives": []}
+                "grams_basis": "no database match found", "alternatives": [], "per100": {}}
     top = cands[0]
     grams, basis = resolve_grams(conn, top["id"], quantity, unit, estimate)
     return {"label": label, "food_id": top["id"], "food_name": top["name"], "source": top["source"],
-            "grams": grams, "grams_basis": basis,
+            "grams": grams, "grams_basis": basis, "per100": per100(conn, top["id"]),
             "alternatives": [{"food_id": c["id"], "food_name": c["name"], "source": c["source"]} for c in cands]}
+
+
+def _positive(x, limit):
+    return float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) and 0 < x <= limit else None
 
 
 def build_proposals(conn: sqlite3.Connection, parsed: dict, today: str):
@@ -139,13 +160,18 @@ def build_proposals(conn: sqlite3.Connection, parsed: dict, today: str):
                 if r["food_id"] is not None and r["grams_basis"].startswith("default"):
                     r["grams_basis"] = "no amount given (default 10 g, please set)"
                     r["grams"] = 10.0
+                r["role"] = "sauce" if ing.get("role") == "sauce" else "main"
+                r["predicted"] = ing.get("predicted") is True
+                if r["predicted"] and r["food_id"] is not None:
+                    r["grams_basis"] = "predicted by AI (please check)"
                 rows.append(r)
             total = round(sum(r["grams"] or 0 for r in rows), 1)
-            eat = it.get("grams_estimate")
+            eat = _positive(it.get("grams_estimate"), 5000)
+            whole = _positive(it.get("total_g"), 10000)  # cooked weight of the whole dish, if the model gave one
             proposals.append({
                 "kind": "recipe", "label": label,
-                "name": str(it.get("recipe_name") or label)[:80], "save": True,
-                "yield_g": total, "eat_g": float(eat) if isinstance(eat, (int, float)) and 0 < eat <= 5000 else total,
+                "name": str(it.get("recipe_name") or label)[:80], "save": False,
+                "yield_g": whole or total, "eat_g": eat or whole or total,
                 "ingredients": rows, "meal": meal, "log_date": day})
             continue
         r = _match(conn, label, it.get("search_terms"), it.get("state"), it.get("quantity"), it.get("unit"),

@@ -38,7 +38,11 @@ def init_db(conn: sqlite3.Connection) -> None:
     if "qualifier" not in cols:
         conn.execute("ALTER TABLE food_nutrients ADD COLUMN qualifier TEXT "
                      "CHECK (qualifier IS NULL OR qualifier IN ('trace','N'))")
-    conn.execute("UPDATE schema_meta SET value = '6' WHERE key = 'schema_version'")
+    # migration v7 -> v8: estimated flag (AI-estimated value, shown as such)
+    if "estimated" not in cols:
+        conn.execute("ALTER TABLE food_nutrients ADD COLUMN estimated INTEGER NOT NULL DEFAULT 0 "
+                     "CHECK (estimated IN (0, 1))")
+    conn.execute("UPDATE schema_meta SET value = '8' WHERE key = 'schema_version'")
     conn.executemany(
         "INSERT OR IGNORE INTO nutrients (code, name, unit, category) VALUES (?,?,?,?)",
         CORE_NUTRIENTS,

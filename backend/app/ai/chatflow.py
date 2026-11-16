@@ -4,7 +4,7 @@ import sqlite3
 
 from .. import recipes
 from . import agent, nllog, tools
-from .providers import Provider
+from .providers import Provider, ProviderError
 
 HISTORY_LIMIT = 20
 RUNNING: set[int] = set()  # conversation ids with a turn in progress (survives client disconnects)
@@ -25,7 +25,21 @@ def message_dict(row) -> dict:
 
 def run_turn(conn: sqlite3.Connection, provider: Provider, conv_id: int, content: str, today: str,
              lang: str = "en"):
-    """Generator of events; ends with {'type':'done','message':{...}}."""
+    """Generator of events; ends with {'type':'done','message':{...}}.
+
+    On failure, the error is saved as an assistant message (so it survives client disconnects
+    and is visible after a reload), then re-raised for the live stream.
+    """
+    try:
+        yield from _run_turn(conn, provider, conv_id, content, today, lang)
+    except Exception as e:
+        msg = str(e) if isinstance(e, ProviderError) else f"internal error: {type(e).__name__}"
+        _save(conn, conv_id, "assistant", f"Error: {msg}", {"kind": "error", "error": msg})
+        raise
+
+
+def _run_turn(conn: sqlite3.Connection, provider: Provider, conv_id: int, content: str, today: str,
+              lang: str = "en"):
     _save(conn, conv_id, "user", content)
     conn.execute("UPDATE conversations SET title = ? WHERE id = ? AND title = 'New chat'",
                  (content.strip().replace(chr(10), " ")[:40] or "New chat", conv_id))
@@ -35,7 +49,10 @@ def run_turn(conn: sqlite3.Connection, provider: Provider, conv_id: int, content
     history = [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
 
     yield {"type": "status", "key": "understanding"}
-    parsed = nllog.parse(provider, history, today, lang, recipes.names(conn))
+    logged = [f"{r['name']} {r['grams']:g} g ({r['meal']})" for r in conn.execute(
+        "SELECT f.name, l.grams, l.meal FROM intake_log l JOIN foods f ON f.id = l.food_id "
+        "WHERE l.log_date = ? ORDER BY l.id", (today,))][-40:]
+    parsed = nllog.parse(provider, history, today, lang, recipes.names(conn), logged)
 
     if parsed["intent"] == "ask":
         reply, meta = parsed["question"].strip(), {"kind": "ask"}

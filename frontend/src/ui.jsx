@@ -11,6 +11,8 @@ const PATHS = {
   right: "M9 6l6 6-6 6",
   calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
   leaf: "M5 19c0-9 5-14 15-14 0 10-5 15-14 15M5 19l7-7",
+  up: "M6 15l6-6 6 6",
+  down: "M6 9l6 6 6-6",
 };
 
 export function Icon({ name, size = 20 }) {

@@ -53,6 +53,16 @@ def test_intake_flow(client):
     assert fibre["status"] == "unknown" and fibre["incomplete_data"]
 
 
+def test_edit_intake_grams(client):
+    client.post("/api/intake", json=dict(log_date="2026-01-02", food_id=1, grams=200))
+    assert client.patch("/api/intake/1", json=dict(grams=50)).json() == {"id": 1, "grams": 50.0}
+    d = client.get("/api/intake/2026-01-02").json()
+    assert d["totals"]["energy_kcal"]["value"] == 190.0
+    assert d["entries"][0]["grams"] == 50 and d["entries"][0]["nutrients"]["energy_kcal"] == 190.0
+    assert client.patch("/api/intake/1", json=dict(grams=0)).status_code == 422
+    assert client.patch("/api/intake/999", json=dict(grams=10)).status_code == 404
+
+
 def test_search_tokens_any_order(client):
     assert [f["name"] for f in client.get("/api/foods", params={"q": "OATS"}).json()] == ["Oats"]
     assert [f["name"] for f in client.get("/api/foods", params={"q": "oa,"}).json()] == ["Oats"]
