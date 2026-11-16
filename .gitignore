@@ -10,3 +10,4 @@ dist/
 .idea/
 .vscode/
 *.egg-info/
+backend/data/raw/
