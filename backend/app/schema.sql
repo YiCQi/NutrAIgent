@@ -1,6 +1,6 @@
--- Schema v3. NULL value in food_nutrients = MISSING data; 0 = measured zero.
+-- Schema v4. NULL value in food_nutrients = MISSING data; 0 = measured zero.
 CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '3');
+INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '4');
 
 CREATE TABLE IF NOT EXISTS sources (
   id INTEGER PRIMARY KEY,
@@ -73,3 +73,20 @@ CREATE INDEX IF NOT EXISTS idx_intake_date ON intake_log(log_date);
 
 -- Local app settings (AI provider config). api_key is stored in plaintext in this local DB.
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+-- AI assistant chat sessions. meta (JSON) on assistant messages: {proposals:[...], status:'pending'|'saved'|'discarded'}
+CREATE TABLE IF NOT EXISTS conversations (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT 'New chat',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY,
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user','assistant')),
+  content TEXT NOT NULL,
+  meta TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);

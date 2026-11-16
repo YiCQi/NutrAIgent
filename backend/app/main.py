@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import db, foods
-from .ai import agent, providers, tools as ai_tools
+from .ai import chatflow, providers
 from .engine import analysis, targets
 
 NL = chr(10)
@@ -140,13 +140,12 @@ class AISettingsIn(BaseModel):
     api_key: str | None = Field(None, max_length=500)  # None = keep existing, "" = clear
 
 
-class ChatMessage(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str = Field(max_length=4000)
-
-
 class ChatIn(BaseModel):
-    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class StatusIn(BaseModel):
+    status: Literal["saved", "discarded"]
 
 
 def _ai_settings_out(conn):
@@ -176,32 +175,63 @@ def get_provider_factory():
     return providers.make_provider
 
 
-@app.post("/api/ai/chat")
-def ai_chat(body: ChatIn, conn=Depends(get_conn), make=Depends(get_provider_factory)):
+def _conv_or_404(conn, conv_id):
+    c = conn.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,)).fetchone()
+    if c is None:
+        raise HTTPException(404, "conversation not found")
+    return c
+
+
+@app.get("/api/conversations")
+def list_conversations(conn=Depends(get_conn)):
+    rows = conn.execute("SELECT id, title, updated_at FROM conversations ORDER BY updated_at DESC, id DESC").fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/conversations", status_code=201)
+def create_conversation(conn=Depends(get_conn)):
+    cur = conn.execute("INSERT INTO conversations DEFAULT VALUES")
+    conn.commit()
+    return {"id": cur.lastrowid, "title": "New chat"}
+
+
+@app.get("/api/conversations/{conv_id}")
+def get_conversation(conv_id: int, conn=Depends(get_conn)):
+    c = _conv_or_404(conn, conv_id)
+    rows = conn.execute("SELECT * FROM messages WHERE conversation_id = ? ORDER BY id", (conv_id,)).fetchall()
+    return {"id": c["id"], "title": c["title"], "messages": [chatflow.message_dict(r) for r in rows]}
+
+
+@app.delete("/api/conversations/{conv_id}", status_code=204)
+def delete_conversation(conv_id: int, conn=Depends(get_conn)):
+    conn.execute("DELETE FROM conversations WHERE id = ?", (conv_id,))
+    conn.commit()
+
+
+@app.patch("/api/messages/{message_id}/status")
+def set_proposal_status(message_id: int, body: StatusIn, conn=Depends(get_conn)):
+    row = conn.execute("SELECT meta FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "message not found")
+    meta = json.loads(row["meta"] or "{}")
+    meta["status"] = body.status
+    conn.execute("UPDATE messages SET meta = ? WHERE id = ?", (json.dumps(meta), message_id))
+    conn.commit()
+    return {"id": message_id, "status": body.status}
+
+
+@app.post("/api/conversations/{conv_id}/chat")
+def chat_stream(conv_id: int, body: ChatIn, conn=Depends(get_conn), make=Depends(get_provider_factory)):
+    """NDJSON stream: {type:'status',text} ... then {type:'done',message} or {type:'error',message}."""
+    _conv_or_404(conn, conv_id)
     cfg = providers.ProviderConfig(
         provider=_setting(conn, "ai_provider", "anthropic"), model=_setting(conn, "ai_model"),
         api_key=_setting(conn, "ai_api_key"), base_url=_setting(conn, "ai_base_url"))
-    try:
-        provider = make(cfg)
-        ctx = ai_tools.Context(conn=conn, today=date_cls.today().isoformat())
-        return agent.run_chat(ctx, provider, [m.model_dump() for m in body.messages])
-    except providers.ProviderError as e:
-        raise HTTPException(502, str(e))
-
-
-@app.post("/api/ai/chat/stream")
-def ai_chat_stream(body: ChatIn, conn=Depends(get_conn), make=Depends(get_provider_factory)):
-    """NDJSON stream of progress events (see agent.iter_chat); errors arrive as {"type":"error"}."""
-    cfg = providers.ProviderConfig(
-        provider=_setting(conn, "ai_provider", "anthropic"), model=_setting(conn, "ai_model"),
-        api_key=_setting(conn, "ai_api_key"), base_url=_setting(conn, "ai_base_url"))
-    history = [m.model_dump() for m in body.messages]
 
     def gen():
         try:
             provider = make(cfg)
-            ctx = ai_tools.Context(conn=conn, today=date_cls.today().isoformat())
-            for ev in agent.iter_chat(ctx, provider, history):
+            for ev in chatflow.run_turn(conn, provider, conv_id, body.content, date_cls.today().isoformat()):
                 yield json.dumps(ev, default=str) + NL
         except providers.ProviderError as e:
             yield json.dumps({"type": "error", "message": str(e)}) + NL

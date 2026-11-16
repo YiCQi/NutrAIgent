@@ -39,3 +39,12 @@ pre { background: #8881; padding: .5rem; overflow: auto; }
 .bar { height: 4px; background: #8883; border-radius: 2px; overflow: hidden; margin-bottom: .4rem; }
 .bar span { display: block; height: 100%; width: 35%; background: #2a7; animation: slide 1.2s ease-in-out infinite; }
 @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+.sessions { display: grid; grid-template-columns: 14rem 1fr; gap: 1rem; margin-top: .75rem; }
+@media (max-width: 700px) { .sessions { grid-template-columns: 1fr; } }
+.sessions aside ul { list-style: none; margin: .5rem 0 0; padding: 0; max-height: 32rem; overflow: auto; }
+.sessions aside li { display: flex; justify-content: space-between; gap: .25rem; padding: .35rem .5rem; cursor: pointer; border-radius: .35rem; }
+.sessions aside li:hover, .sessions aside li.sel { background: #2a72; }
+.sessions aside .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg { max-width: 95%; }
+.msg .card { margin-top: .5rem; background: #0002; }
+.msg .card td { vertical-align: top; }

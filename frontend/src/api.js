@@ -27,11 +27,15 @@ export const api = {
   deleteIntake: (id) => req("DELETE", `/api/intake/${id}`),
   getAISettings: () => req("GET", "/api/ai/settings"),
   putAISettings: (s) => req("PUT", "/api/ai/settings", s),
-  chat: (messages) => req("POST", "/api/ai/chat", { messages }),
+  listConvs: () => req("GET", "/api/conversations"),
+  createConv: () => req("POST", "/api/conversations"),
+  getConv: (id) => req("GET", `/api/conversations/${id}`),
+  deleteConv: (id) => req("DELETE", `/api/conversations/${id}`),
+  setProposalStatus: (messageId, status) => req("PATCH", `/api/messages/${messageId}/status`, { status }),
   // Streams NDJSON progress events; resolves with the final 'done' event, rejects on 'error'.
-  chatStream: async (messages, onEvent) => {
-    const r = await fetch("/api/ai/chat/stream", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages }),
+  chatStream: async (convId, content, onEvent) => {
+    const r = await fetch(`/api/conversations/${convId}/chat`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }),
     });
     if (!r.ok || !r.body) throw new Error(`request failed (${r.status})`);
     const reader = r.body.getReader();
