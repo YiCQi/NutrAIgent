@@ -33,9 +33,9 @@ export const api = {
   deleteConv: (id) => req("DELETE", `/api/conversations/${id}`),
   setProposalStatus: (messageId, status) => req("PATCH", `/api/messages/${messageId}/status`, { status }),
   // Streams NDJSON progress events; resolves with the final 'done' event, rejects on 'error'.
-  chatStream: async (convId, content, onEvent) => {
+  chatStream: async (convId, content, lang, onEvent) => {
     const r = await fetch(`/api/conversations/${convId}/chat`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, lang }),
     });
     if (!r.ok || !r.body) throw new Error(`request failed (${r.status})`);
     const reader = r.body.getReader();
@@ -59,6 +59,11 @@ export const api = {
     if (!done) throw new Error("connection closed before the reply finished");
     return done;
   },
+  listRecipes: () => req("GET", "/api/recipes"),
+  getRecipe: (id) => req("GET", `/api/recipes/${id}`),
+  createRecipe: (r) => req("POST", "/api/recipes", r),
+  updateRecipe: (id, r) => req("PUT", `/api/recipes/${id}`, r),
+  deleteRecipe: (id) => req("DELETE", `/api/recipes/${id}`),
   getIntake: (date) => req("GET", `/api/intake/${date}`),
 };
 

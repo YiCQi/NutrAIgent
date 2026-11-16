@@ -1,37 +1,76 @@
 import { useEffect, useState } from "react";
-import ProfileTab from "./ProfileTab.jsx";
-import FoodsTab from "./FoodsTab.jsx";
-import LogTab from "./LogTab.jsx";
-import AssistantTab from "./AssistantTab.jsx";
-import "./styles.css";
+import { I18nProvider, useI18n } from "./i18n.jsx";
+import { Icon } from "./ui.jsx";
+import TodayPage from "./pages/TodayPage.jsx";
+import AssistantPage from "./pages/AssistantPage.jsx";
+import FoodsPage from "./pages/FoodsPage.jsx";
+import RecipesPage from "./pages/RecipesPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
+import "./app.css";
 
-const TABS = ["Log", "Foods", "Assistant", "Profile"];
+const NAV = [
+  ["today", "today", "nav.today"],
+  ["assistant", "sparkle", "nav.assistant"],
+  ["foods", "search", "nav.foods"],
+  ["recipes", "book", "nav.recipes"],
+  ["profile", "user", "nav.profile"],
+];
 
-export default function App() {
-  const [tab, setTab] = useState("Log");
-  const [health, setHealth] = useState("checking…");
+function LangSwitch() {
+  const { lang, setLang } = useI18n();
+  return (
+    <div className="seg" role="group" aria-label="language">
+      <button className={lang === "zh" ? "on" : ""} onClick={() => setLang("zh")}>中文</button>
+      <button className={lang === "en" ? "on" : ""} onClick={() => setLang("en")}>EN</button>
+    </div>
+  );
+}
+
+function Shell() {
+  const { t } = useI18n();
+  const [page, setPage] = useState(() => { try { return localStorage.getItem("page") || "today"; } catch { return "today"; } });
+  const [online, setOnline] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const bump = () => setRefreshKey((k) => k + 1);
+  const go = (p) => { setPage(p); try { localStorage.setItem("page", p); } catch {} };
 
   useEffect(() => {
-    fetch("/api/health").then((r) => r.json()).then((d) => setHealth(d.status)).catch(() => setHealth("backend offline"));
+    const ping = () => fetch("/api/health").then((r) => setOnline(r.ok)).catch(() => setOnline(false));
+    ping();
+    const id = setInterval(ping, 15000);
+    return () => clearInterval(id);
   }, []);
 
   return (
-    <main>
-      <header>
-        <h1>NutrAIgent</h1>
-        <span className={health === "ok" ? "ok" : "err"}>backend: {health}</span>
-      </header>
-      <nav>
-        {TABS.map((t) => (
-          <button key={t} className={t === tab ? "active" : ""} onClick={() => setTab(t)}>{t}</button>
+    <div className="app">
+      <nav className="sidebar">
+        <div className="brand"><span className="logo"><Icon name="leaf" size={20} /></span>NutrAIgent</div>
+        {NAV.map(([id, icon, label]) => (
+          <button key={id} className={`nav-item ${page === id ? "active" : ""}`} onClick={() => go(id)}>
+            <Icon name={icon} /> <span>{t(label)}</span>
+          </button>
         ))}
+        <div className="spacer" />
+        <div className="side-foot">
+          <LangSwitch />
+          <span><span className={`dot ${online ? "" : "off"}`} />{online ? t("app.online") : t("app.offline")}</span>
+        </div>
       </nav>
-      {tab === "Profile" && <ProfileTab onSaved={bump} />}
-      {tab === "Foods" && <FoodsTab onLogged={bump} />}
-      {tab === "Assistant" && <AssistantTab onLogged={bump} />}
-      {tab === "Log" && <LogTab refreshKey={refreshKey} />}
-    </main>
+      <main>
+        <div className="topbar-mobile"><strong>NutrAIgent</strong><LangSwitch /></div>
+        {!online && <div className="content" style={{ paddingBottom: 0 }}><div className="banner" style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>{t("app.offline")}</div></div>}
+        <div className="content">
+          {page === "today" && <TodayPage refreshKey={refreshKey} go={go} />}
+          {page === "assistant" && <AssistantPage onLogged={bump} />}
+          {page === "foods" && <FoodsPage onLogged={bump} />}
+          {page === "recipes" && <RecipesPage />}
+          {page === "profile" && <ProfilePage onSaved={bump} />}
+        </div>
+      </main>
+    </div>
   );
+}
+
+export default function App() {
+  return <I18nProvider><Shell /></I18nProvider>;
 }
