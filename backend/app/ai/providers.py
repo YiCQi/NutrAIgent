@@ -54,9 +54,10 @@ class AnthropicProvider(Provider):
         base = (self.cfg.base_url or self.DEFAULT_URL).rstrip("/")
         payload = {
             "model": self.cfg.model, "max_tokens": 2048, "system": system, "messages": messages,
-            "tools": [{"name": t["name"], "description": t["description"],
-                       "input_schema": t["parameters"]} for t in tools],
         }
+        if tools:
+            payload["tools"] = [{"name": t["name"], "description": t["description"],
+                                 "input_schema": t["parameters"]} for t in tools]
         data = self._post(f"{base}/v1/messages",
                           {"x-api-key": self.cfg.api_key, "anthropic-version": "2023-06-01"}, payload)
         content = []
@@ -105,8 +106,9 @@ class OpenAICompatProvider(Provider):
         payload = {
             "model": self.cfg.model,
             "messages": self.to_openai_messages(system, messages),
-            "tools": [{"type": "function", "function": t} for t in tools],
         }
+        if tools:  # some servers reject an empty tools array
+            payload["tools"] = [{"type": "function", "function": t} for t in tools]
         headers = {"Authorization": f"Bearer {self.cfg.api_key}"} if self.cfg.api_key else {}
         data = self._post(f"{base}/chat/completions", headers, payload)
         try:

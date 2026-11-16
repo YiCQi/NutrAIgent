@@ -63,7 +63,14 @@ export default function AssistantTab({ onLogged }) {
   const [proposals, setProposals] = useState([]);
   const [trace, setTrace] = useState([]);
   const [saved, setSaved] = useState("");
+  const [secs, setSecs] = useState(0);
   const end = useRef(null);
+  useEffect(() => {
+    if (!busy) return;
+    setSecs(0);
+    const t = setInterval(() => setSecs((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
   useEffect(() => { end.current?.scrollIntoView?.({ block: "end" }); }, [history, proposals]);
 
   const ready = cfg?.has_key || (cfg?.provider === "openai_compatible" && cfg?.model);
@@ -98,15 +105,15 @@ export default function AssistantTab({ onLogged }) {
       <p className="muted">Try: “I had two eggs and a banana for breakfast” or “How is my protein today?”. Nutrient numbers come from the food database, not from the AI.</p>
       <div className="chat">
         {history.map((m, i) => <div key={i} className={`msg ${m.role}`}>{m.content}</div>)}
-        {busy && <div className="msg assistant muted">thinking…</div>}
+        {busy && <div className="msg assistant muted">thinking… {secs}s (may take up to a minute: searching foods)</div>}
         {proposals.length > 0 && (
           <div className="card">
             <strong>Proposed log entries (not saved yet)</strong>
             <table>
               <thead><tr><th>Food</th><th>Grams</th><th>Meal</th><th>Date</th></tr></thead>
-              <tbody>{proposals.map((p, i) => <tr key={i}><td>{p.food_name}</td><td>{p.grams}</td><td>{p.meal}</td><td>{p.log_date}</td></tr>)}</tbody>
+              <tbody>{proposals.map((p, i) => <tr key={i}><td>{p.food_name}</td><td><input type="number" min="1" style={{ width: "5rem" }} value={p.grams} onChange={(e) => setProposals(proposals.map((q, j) => (j === i ? { ...q, grams: Number(e.target.value) } : q)))} /></td><td>{p.meal}</td><td>{p.log_date}</td></tr>)}</tbody>
             </table>
-            <button onClick={confirm}>Confirm and log</button>{" "}
+            <button onClick={confirm} disabled={proposals.some((p) => !(p.grams > 0))}>Confirm and log</button>{" "}
             <button className="link" onClick={() => setProposals([])}>Discard</button>
           </div>
         )}

@@ -12,6 +12,7 @@
 - Settings + API key stored in table `settings` (schema v3) in the local SQLite file, PLAINTEXT. Consider OS keyring later.
 - Privacy: chat text and tool results (foods, daily intake/targets) are sent to the configured provider; UI says so.
 - 18 tests pass using scripted fake provider + httpx MockTransport. Real-API behaviour (tool-call formats, model names) unverified: needs the user's key. UI Assistant tab renders and settings API verified live; full chat flow not run.
+- Live test (2026-11-16, user's KCL OpenAI-compatible endpoint, model `arc:apex`): tool calling works. Chinese meal message -> 6 proposed entries, but took ~45-103 s (6-12 model round trips, ~8 s each). Fixed: empty `tools` array omitted (server 400), prompt now assumes portions instead of asking, replies in user's language, UI shows elapsed timer and editable grams. TODO: stream progress (SSE) or cut steps; faster model.
 - `foods.py` holds shared search/detail logic. `httpx` and `openpyxl` now in pyproject deps.
 
 ## Layout
