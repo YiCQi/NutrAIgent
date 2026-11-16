@@ -4,7 +4,7 @@ import { basisLabel, useI18n } from "../i18n.jsx";
 
 const MEALS = ["breakfast", "lunch", "dinner", "snack", "other"];
 const NUT_COLS = [["energy_kcal", "col.kcal"], ["protein_g", "col.protein"], ["carbohydrate_g", "col.carbs"],
-  ["fat_g", "col.fat"], ["sodium_mg", "col.sodium"]];
+  ["fat_g", "col.fat"], ["fibre_g", "col.fibre"], ["sodium_mg", "col.sodium"]];
 
 // Sum per-100 g values over rows at their grams. Any row missing a value -> null (same rule as recipes).
 function sumNutrition(rows) {
@@ -19,6 +19,24 @@ function sumNutrition(rows) {
     out[code] = complete ? total : null;
   }
   return out;
+}
+
+// Everything this message will log, as {per100, grams} rows (recipes scaled by eat_g / yield_g when saved).
+function mealRows(items) {
+  const rows = [];
+  for (const p of items) {
+    if (!p.include) continue;
+    if (p.kind === "recipe") {
+      const inc = p.ingredients.filter((g) => g.include && g.food_id && g.grams > 0);
+      const whole = inc.reduce((s, g) => s + Number(g.grams), 0);
+      const yieldG = Number(p.yield_g) > 0 ? Number(p.yield_g) : whole;
+      const ratio = p.save ? (Number(p.eat_g) || 0) / yieldG : 1; // unsaved: ingredients are logged as they are
+      for (const g of inc) rows.push({ per100: g.per100, grams: Number(g.grams) * ratio });
+    } else if (p.food_id && p.grams > 0) {
+      rows.push({ per100: p.per100, grams: Number(p.grams) });
+    }
+  }
+  return rows;
 }
 
 const fmt = (v) => (v == null || Number.isNaN(v) ? "—" : v >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
@@ -172,6 +190,18 @@ export default function Proposals({ message, onSaved }) {
           </table>
         </div>
       ))}
+      {mealRows(items).length > 0 && (() => {
+        const totals = sumNutrition(mealRows(items));
+        return (
+          <div className="nut-block">
+            <small className="muted" style={{ display: "block", margin: "10px 0 4px" }}>{t("assistant.mealTotal")}</small>
+            <table>
+              <thead><tr>{NUT_COLS.map(([c, k]) => <th key={c}>{t(k)}</th>)}</tr></thead>
+              <tbody><tr className="sub">{NUT_COLS.map(([c]) => <td key={c}>{fmt(totals[c])}</td>)}</tr></tbody>
+            </table>
+          </div>
+        );
+      })()}
       <div className="row" style={{ marginTop: 10 }}>
         <button className="btn" onClick={confirm} disabled={busy || count === 0}>{t("assistant.confirm", { n: count })}</button>
         <button className="btn ghost" onClick={discard} disabled={busy}>{t("assistant.discard")}</button>

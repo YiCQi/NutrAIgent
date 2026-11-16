@@ -1,14 +1,21 @@
 # Start NutrAIgent with one command.
-#   .\start.ps1          build the frontend if needed, serve everything on http://127.0.0.1:8000, open the browser
-#   .\start.ps1 -Dev     backend (8000) + Vite dev server with hot reload (5173) in this one window
+#   .\start.ps1          build the frontend if needed, serve everything on a free port 8100-8199 (shown in the window), open the browser
+#   .\start.ps1 -Dev     backend (port 8100-8199, auto) + Vite dev server with hot reload (5173) in this one window
 #   .\start.ps1 -Port 9000 -NoBrowser
+#   .\start.ps1 -KeepRunning   keep the server running after the browser closes (default: it stops itself
+#                              shortly after the last browser tab closes)
 # Ctrl+C stops everything.
-param([switch]$Dev, [int]$Port = 8000, [switch]$NoBrowser)
+param([switch]$Dev, [int]$Port = 0, [switch]$NoBrowser, [switch]$KeepRunning)  # 0 = first free port in 8100-8199
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 $be = Join-Path $root "backend"
 $fe = Join-Path $root "frontend"
 $py = Join-Path $be ".venv\Scripts\python.exe"
+
+if ($Port -eq 0) {
+    $Port = 8100..8199 | Where-Object { -not (Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue) } | Select-Object -First 1
+    if (-not $Port) { throw "no free port in 8100-8199" }
+}
 
 if (-not (Test-Path $py)) {
     Write-Host "First run: creating Python environment..."
@@ -51,4 +58,5 @@ $url = "http://127.0.0.1:$Port"
 Write-Host "NutrAIgent: $url   (Ctrl+C to stop)" -ForegroundColor Green
 if (-not $NoBrowser) { Start-Job { Start-Sleep 2; Start-Process $using:url } | Out-Null }
 Push-Location $be
+$env:NUTRAIGENT_AUTOSTOP = if ($KeepRunning) { "0" } else { "1" }
 try { & $py -m uvicorn app.main:app --port $Port } finally { Pop-Location }

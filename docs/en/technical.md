@@ -89,8 +89,8 @@ New providers can be added in `backend/app/ai/providers.py` (`REGISTRY`).
 ## Developer commands
 
 ```
-.\start.ps1               build the frontend if needed and run the app on port 8000
-.\start.ps1 -Dev          backend (8000) and Vite dev server with hot reload (5173)
+.\start.ps1               build the frontend if needed and run the app on the first free port in 8100-8199
+.\start.ps1 -Dev          backend (port auto-chosen in 8100-8199) and Vite dev server with hot reload (5173)
 .\start.ps1 -Port 9000 -NoBrowser
 ```
 

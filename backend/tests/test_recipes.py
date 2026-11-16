@@ -108,7 +108,7 @@ def test_recipe_proposal_from_ingredients(conn):
             {"label": "神秘酱", "search_terms": ["zzzz"], "grams_estimate": 5}]}]}
     out = list(nllog.build_proposals(conn, parsed, "2026-01-02"))[-1][1]
     rec = out[0]
-    assert rec["kind"] == "recipe" and rec["save"] is True and rec["eat_g"] == 250.0
+    assert rec["kind"] == "recipe" and rec["save"] is False and rec["eat_g"] == 250.0
     assert [i["food_name"] for i in rec["ingredients"]] == ["Pork, spare ribs, braised", "Soy sauce", "Salt, table", None]
     assert rec["yield_g"] == 217.0  # unmatched row has no grams
 

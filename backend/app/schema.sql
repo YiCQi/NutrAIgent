@@ -1,6 +1,6 @@
--- Schema v7. NULL value in food_nutrients = MISSING data; 0 = measured zero.
+-- Schema v8. NULL value in food_nutrients = MISSING data; 0 = measured zero; estimated = 1 means AI estimate.
 CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '7');
+INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '8');
 
 CREATE TABLE IF NOT EXISTS sources (
   id INTEGER PRIMARY KEY,
@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS food_nutrients (
   nutrient_id INTEGER NOT NULL REFERENCES nutrients(id),
   value_per_100g REAL CHECK (value_per_100g IS NULL OR value_per_100g >= 0),
   qualifier TEXT CHECK (qualifier IS NULL OR qualifier IN ('trace','N')),
+  estimated INTEGER NOT NULL DEFAULT 0 CHECK (estimated IN (0, 1)),
   PRIMARY KEY (food_id, nutrient_id)
 );
 

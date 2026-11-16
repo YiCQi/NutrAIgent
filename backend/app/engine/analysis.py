@@ -1,9 +1,6 @@
 """Daily intake aggregation and comparison vs targets. No AI involved."""
 import sqlite3
 
-ENTRY_KEYS = ("energy_kcal", "protein_g", "carbohydrate_g", "fat_g")
-
-
 def daily_intake(conn: sqlite3.Connection, log_date: str) -> dict:
     """Sum nutrients for a date. Missing data is tracked, never treated as zero."""
     entries = conn.execute(
@@ -13,25 +10,27 @@ def daily_intake(conn: sqlite3.Connection, log_date: str) -> dict:
         (log_date,),
     ).fetchall()
     nutrients = conn.execute("SELECT id, code, unit FROM nutrients").fetchall()
-    totals = {n["code"]: {"value": 0.0, "unit": n["unit"], "missing_entries": []} for n in nutrients}
+    totals = {n["code"]: {"value": 0.0, "unit": n["unit"], "missing_entries": [], "estimated": False}
+              for n in nutrients}
     per_entry = {}
     for e in entries:
         vals = {
-            r["nutrient_id"]: r["value_per_100g"]
+            r["nutrient_id"]: (r["value_per_100g"], bool(r["estimated"]))
             for r in conn.execute(
-                "SELECT nutrient_id, value_per_100g FROM food_nutrients WHERE food_id = ?",
+                "SELECT nutrient_id, value_per_100g, estimated FROM food_nutrients WHERE food_id = ?",
                 (e["food_id"],),
             )
         }
         per_entry[e["id"]] = {}
         for n in nutrients:
-            v = vals.get(n["id"])  # absent row or NULL -> missing
+            v, est = vals.get(n["id"], (None, False))  # absent row or NULL -> missing
             if v is None:
                 totals[n["code"]]["missing_entries"].append(e["id"])
             else:
                 totals[n["code"]]["value"] += v * e["grams"] / 100.0
-            if n["code"] in ENTRY_KEYS:  # per-entry numbers for the UI (None = missing)
-                per_entry[e["id"]][n["code"]] = None if v is None else round(v * e["grams"] / 100.0, 1)
+                totals[n["code"]]["estimated"] |= est
+            # per-entry amount for every nutrient, used for the UI source tooltips (None = missing)
+            per_entry[e["id"]][n["code"]] = None if v is None else round(v * e["grams"] / 100.0, 2)
     for t in totals.values():
         t["value"] = round(t["value"], 2)
     out = []
@@ -54,6 +53,11 @@ def compare(intake: dict, targets: dict) -> list[dict]:
         incomplete = bool(tot["missing_entries"])
         if t["kind"] == "max":
             status = "excess" if val > goal else ("ok_incomplete" if incomplete else "ok")
+        elif t["kind"] == "min":  # minimum only: more is never flagged
+            if pct is not None and pct >= 100:
+                status = "ok"
+            else:
+                status = "unknown" if incomplete else ("deficient" if pct is not None and pct < 80 else "low")
         elif pct is not None and pct >= 100:
             status = "ok" if pct <= 150 else "excess"
         else:

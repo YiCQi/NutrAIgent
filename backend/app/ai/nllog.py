@@ -17,6 +17,7 @@ MEALS = ("breakfast", "lunch", "dinner", "snack", "other")
 
 PARSE_SYSTEM = """You are the parser of a nutrition-tracking app. Today is <<today>>. The user's language: <<lang>>.
 Saved recipes (the user's own dishes): <<recipes>>
+Already logged today: <<logged>>. Skip an item ONLY when the user clearly refers to food already logged (leftovers, "the rest of it", "same as lunch", "the earlier one"). Food the user describes as eaten now is a NEW entry, even if a similar item is already logged.
 Read the user's latest message (earlier messages are context) and reply with ONE JSON object, nothing else. Choose one:
 
 1) The user reports food or drink they consumed and you have enough information:
@@ -27,11 +28,12 @@ ITEM = {"label":"the food as the user wrote it",
   "grams_estimate":typical total weight in grams of what was eaten,
   "meal":"breakfast|lunch|dinner|snack|other", "date":"YYYY-MM-DD or null for today"}
 - Normal food, or one of the saved recipes: plain ITEM (for a saved recipe put its exact name first in search_terms).
-- Home-cooked composite dish that is NOT a saved recipe: add to the ITEM
+- Any dish, meal or drink made of SEVERAL components (a cooked dish, a stir-fry, a drink with several ingredients such as oats + honey + milk), and not a saved recipe: add to the ITEM
   "recipe_name":"short dish name in the user's language",
   "total_g": estimated weight of the WHOLE cooked dish (all of it, not the portion eaten),
   "ingredients":[{"label":"...","search_terms":[...],"state":"raw|cooked|any","role":"main|sauce",
     "predicted":true|false,"grams_estimate":grams of this ingredient in the WHOLE dish}]
+  - Break it down finely: one ingredient row for EVERY component the user named AND every ingredient the preparation needs (cooking oil, garlic, ginger, salt, soy sauce, sugar, honey or other sweeteners, milk or soy milk, grains, vegetables, sauces). Never merge two components into one row; never drop a vegetable, grain or sweetener the user mentioned.
   - The main food(s): role "main".
   - Every seasoning, oil, sauce or condiment: role "sauce" (salt, sugar, soy sauce, oyster sauce, vinegar, cooking wine, cornstarch, cooking oil...).
   - Sauces/seasonings the user NAMED: "predicted":false, use the stated amount if given.
@@ -50,11 +52,12 @@ Do NOT ask again if an earlier assistant message already asked and the user answ
 Database food names are English (USDA/UK style, e.g. "Rice, white, cooked", "Soy sauce", "Salt, table"). Never output nutrient values."""
 
 
-def parse(provider: Provider, history: list[dict], today: str, lang: str = "en", recipe_names=()) -> dict:
+def parse(provider: Provider, history: list[dict], today: str, lang: str = "en", recipe_names=(), logged=()) -> dict:
     """One model call. Returns {'intent': 'chat'} if the output is not usable JSON."""
     system = (PARSE_SYSTEM.replace("<<today>>", today)
               .replace("<<lang>>", "Chinese (简体中文)" if lang == "zh" else "English")
-              .replace("<<recipes>>", json.dumps(list(recipe_names), ensure_ascii=False) if recipe_names else "none"))
+              .replace("<<recipes>>", json.dumps(list(recipe_names), ensure_ascii=False) if recipe_names else "none")
+              .replace("<<logged>>", "; ".join(logged) if logged else "nothing yet"))
     resp = provider.complete(system, [{"role": m["role"], "content": m["content"]} for m in history], [])
     text = "".join(b["text"] for b in resp["content"] if b["type"] == "text")
     a, b = text.find("{"), text.rfind("}")
@@ -167,7 +170,7 @@ def build_proposals(conn: sqlite3.Connection, parsed: dict, today: str):
             whole = _positive(it.get("total_g"), 10000)  # cooked weight of the whole dish, if the model gave one
             proposals.append({
                 "kind": "recipe", "label": label,
-                "name": str(it.get("recipe_name") or label)[:80], "save": True,
+                "name": str(it.get("recipe_name") or label)[:80], "save": False,
                 "yield_g": whole or total, "eat_g": eat or whole or total,
                 "ingredients": rows, "meal": meal, "log_date": day})
             continue

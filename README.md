@@ -17,7 +17,7 @@ Local nutrition tracker with an optional AI assistant. Data stays on your machin
 
 ### 2. 启动
 
-双击 `start.bat`。首次运行会安装依赖，需要几分钟；完成后浏览器打开 http://127.0.0.1:8000 。关闭窗口即停止。
+双击 `start.bat`。首次运行会安装依赖，需要几分钟；完成后浏览器打开 http://127.0.0.1:81xx （端口自动选择 8100–8199，窗口里会显示）。关闭浏览器页面后服务会自动停止。
 
 ### 3. 导入食物数据（仅一次）
 
@@ -61,7 +61,7 @@ Local nutrition tracker with an optional AI assistant. Data stays on your machin
 ### 常见问题
 
 - **`start.bat` 无反应**：检查 Python 与 Node.js 是否在 PATH 中。
-- **端口 8000 被占用**：运行 `.\start.ps1 -Port 9000`。
+- **8100–8199 端口都被占用**：运行 `.\start.ps1 -Port 9000` 指定其他端口。
 - **目标旁显示"临时"**：计算公式尚未与官方标准核对，见 [技术说明](docs/zh/technical.md#目标计算临时)。
 - **数据位置**：`%USERPROFILE%\.nutraigent\nutraigent.db`，备份此文件即可。
 
@@ -78,7 +78,7 @@ Local nutrition tracker with an optional AI assistant. Data stays on your machin
 
 ### 2. Start
 
-Run `start.bat`. The first run installs dependencies and takes a few minutes; the app then opens at http://127.0.0.1:8000 . Close the window to stop.
+Run `start.bat`. The first run installs dependencies and takes a few minutes; the app then opens at http://127.0.0.1:81xx (port chosen automatically from 8100–8199, shown in the window). The server stops itself after the last browser page closes.
 
 ### 3. Load food data (once)
 
@@ -122,7 +122,7 @@ Chat text and the food data needed for a reply go to the chosen provider; with a
 ### Troubleshooting
 
 - **`start.bat` does nothing**: check that Python and Node.js are on PATH.
-- **Port 8000 in use**: run `.\start.ps1 -Port 9000`.
+- **Ports 8100–8199 all in use**: run `.\start.ps1 -Port 9000` to pick another port.
 - **"Provisional" on targets**: formulas are not yet checked against an official standard. See [technical notes](docs/en/technical.md#calculation-provisional).
 - **Data location**: `%USERPROFILE%\.nutraigent\nutraigent.db`. Back up this file.
 

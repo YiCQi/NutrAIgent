@@ -18,6 +18,11 @@ FAT_ENERGY_FRACTION = 0.30
 SAT_FAT_MAX_ENERGY_FRACTION = 0.10
 FIBRE_G = 30.0
 SODIUM_MAX_MG = 2400.0
+# Micronutrient reference intakes: UK RNI (DH 1991, adults 19-50). Provisional, like the rest.
+CALCIUM_MG = 700.0
+IRON_MG = {"male": 8.7, "female": 14.8}
+VITAMIN_C_MG = 40.0
+VITAMIN_B12_UG = 1.5
 KCAL_PER_G = {"protein": 4, "carb": 4, "fat": 9}
 
 
@@ -55,7 +60,7 @@ def compute_targets(p: Profile) -> dict:
 
     return {
         "targets": {
-            # kind: 'target' = aim to reach, 'max' = limit not to exceed
+            # kind: 'target' = aim to reach, 'min' = minimum to reach (no upper limit), 'max' = limit not to exceed
             "energy_kcal": {"value": r(energy), "unit": "kcal", "kind": "target"},
             "protein_g": {"value": r(protein), "unit": "g", "kind": "target"},
             "fat_g": {"value": r(fat), "unit": "g", "kind": "target"},
@@ -63,6 +68,10 @@ def compute_targets(p: Profile) -> dict:
             "fibre_g": {"value": FIBRE_G, "unit": "g", "kind": "target"},
             "sat_fat_g": {"value": r(sat_fat_max), "unit": "g", "kind": "max"},
             "sodium_mg": {"value": SODIUM_MAX_MG, "unit": "mg", "kind": "max"},
+            "calcium_mg": {"value": CALCIUM_MG, "unit": "mg", "kind": "min"},
+            "iron_mg": {"value": IRON_MG[p.sex], "unit": "mg", "kind": "min"},
+            "vitamin_c_mg": {"value": VITAMIN_C_MG, "unit": "mg", "kind": "min"},
+            "vitamin_b12_ug": {"value": VITAMIN_B12_UG, "unit": "ug", "kind": "min"},
         },
         "trace": {
             "bmr_kcal": r(bmr),

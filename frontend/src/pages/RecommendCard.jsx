@@ -9,6 +9,7 @@ export default function RecommendCard({ date, refreshKey }) {
   const { t, lang, nutrient } = useI18n();
   const [data, setData] = useState(null);
   const [hidden, setHidden] = useState(false);
+  const [folded, setFolded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -44,11 +45,16 @@ export default function RecommendCard({ date, refreshKey }) {
   return (
     <div className="card">
       <div className="page-head" style={{ marginBottom: 8 }}>
-        <h3>{t("rec.title")}</h3>
+        <div className="row">
+          <button className="icon-btn" onClick={() => setFolded((f) => !f)} aria-expanded={!folded}
+                  title={t(folded ? "common.expand" : "common.collapse")}><Icon name={folded ? "down" : "up"} size={18} /></button>
+          <h3>{t("rec.title")}</h3>
+        </div>
         <button className="btn sm" onClick={generate} disabled={pending}>
           <Icon name="sparkle" size={16} />{pending ? t("rec.busy") : stored ? t("rec.regenerate") : t("rec.generate")}
         </button>
       </div>
+      <div hidden={folded}>
       <small>{t("rec.hint")}</small>
 
       {live.short.length === 0 ? (
@@ -112,6 +118,7 @@ export default function RecommendCard({ date, refreshKey }) {
         </div>
       )}
       {err && <p className="err" style={{ margin: "8px 0 0" }}>{err}</p>}
+      </div>
     </div>
   );
 }

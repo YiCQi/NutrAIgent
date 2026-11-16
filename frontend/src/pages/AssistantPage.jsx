@@ -5,8 +5,8 @@ import { Icon } from "../ui.jsx";
 import Proposals from "./Proposals.jsx";
 
 const HINT = {
-  anthropic: { model: "claude-sonnet-5-5", url: "https://api.anthropic.com" },
-  openai_compatible: { model: "model name", url: "https://api.openai.com/v1  |  http://localhost:11434/v1" },
+  anthropic: { model: "claude-haiku-5-5", url: "https://api.anthropic.com" },
+  openai_compatible: { model: "fast non-reasoning model, e.g. gpt-4o-mini", url: "https://api.openai.com/v1  |  http://localhost:11434/v1" },
 };
 
 function Settings({ onChange }) {
@@ -35,7 +35,8 @@ function Settings({ onChange }) {
               <option value="anthropic">Anthropic</option><option value="openai_compatible">OpenAI-compatible</option>
             </select>
           </label>
-          <label className="field">{t("assistant.model")}<input value={s.model} placeholder={HINT[s.provider].model} onChange={(e) => setS({ ...s, model: e.target.value })} /></label>
+          <label className="field">{t("assistant.model")}<input value={s.model} placeholder={HINT[s.provider].model} onChange={(e) => setS({ ...s, model: e.target.value })} />
+            <small>{t("assistant.modelHint")}</small></label>
           <label className="field wide">{t("assistant.baseUrl")}<input value={s.base_url} placeholder={HINT[s.provider].url} onChange={(e) => setS({ ...s, base_url: e.target.value })} /></label>
           <label className="field wide">{t("assistant.apiKey")}{s.has_key && <small>({t("assistant.keySaved")})</small>}
             <input type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder={s.has_key ? "••••••••" : ""} />

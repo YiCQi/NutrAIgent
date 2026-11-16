@@ -1,4 +1,6 @@
 import json
+import os
+import time
 from datetime import date as date_cls
 from pathlib import Path
 from typing import Literal
@@ -8,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import featured, foods, jobs, plans_api, recipes_api, recommend_api
+from . import estimate, featured, foods, jobs, plans_api, presence, recipes_api, recommend_api
 from .deps import get_conn, get_provider_factory
 from .ai import chatflow, providers
 from .engine import analysis, targets
@@ -111,6 +113,19 @@ def add_intake(i: IntakeIn, conn=Depends(get_conn)):
     return {"id": cur.lastrowid}
 
 
+class IntakeEditIn(BaseModel):
+    grams: float = Field(gt=0)
+
+
+@app.patch("/api/intake/{entry_id}")
+def edit_intake(entry_id: int, body: IntakeEditIn, conn=Depends(get_conn)):
+    cur = conn.execute("UPDATE intake_log SET grams = ? WHERE id = ?", (body.grams, entry_id))
+    conn.commit()
+    if cur.rowcount == 0:
+        raise HTTPException(404, "entry not found")
+    return {"id": entry_id, "grams": body.grams}
+
+
 @app.delete("/api/intake/{entry_id}", status_code=204)
 def delete_intake(entry_id: int, conn=Depends(get_conn)):
     conn.execute("DELETE FROM intake_log WHERE id = ?", (entry_id,))
@@ -125,6 +140,22 @@ def get_intake(log_date: date_cls, conn=Depends(get_conn)):
         t = targets.compute_targets(_to_profile(row))
         intake["comparison"] = analysis.compare(intake, t["targets"])
     return intake
+
+
+@app.post("/api/intake/{log_date}/estimate")
+def estimate_intake(log_date: date_cls, conn=Depends(get_conn), make=Depends(get_provider_factory)):
+    """Fill missing calcium/iron/vitamin C/B12 of the day's foods with AI estimates (flagged estimated)."""
+    foods = estimate.missing_foods(conn, log_date.isoformat())
+    if not foods:
+        return {"stored": 0, "unanswered": [], "foods": 0}
+    cfg = providers.ProviderConfig(
+        provider=_setting(conn, "ai_provider", "anthropic"), model=_setting(conn, "ai_model"),
+        api_key=_setting(conn, "ai_api_key"), base_url=_setting(conn, "ai_base_url"))
+    try:
+        result = estimate.estimate(conn, make(cfg), foods)
+    except providers.ProviderError as e:
+        raise HTTPException(502, str(e))
+    return {**result, "foods": len(foods)}
 
 
 # ---------------------------------------------------------------- AI (BYOK)
@@ -234,10 +265,32 @@ def chat_stream(conv_id: int, body: ChatIn, conn=Depends(get_conn), make=Depends
 
     def events():
         provider = make(cfg)
+        provider.timeout = 300  # meal breakdowns can take minutes on slow endpoints (default 120 s)
         yield from chatflow.run_turn(conn, provider, conv_id, body.content, date_cls.today().isoformat(), body.lang)
 
     return StreamingResponse(jobs.stream_in_background(events, lambda: chatflow.RUNNING.discard(conv_id)),
                              media_type="application/x-ndjson")
+
+
+# Browser presence: the page pings while open and says bye on close (see app/presence.py).
+PRESENCE = presence.Presence()
+
+
+@app.post("/api/presence/ping")
+def presence_ping(client: str = Query(..., max_length=64)):
+    PRESENCE.ping(client, time.time())
+    return {"ok": True}
+
+
+@app.post("/api/presence/bye")
+def presence_bye(client: str = Query(..., max_length=64)):
+    PRESENCE.bye(client)
+    return {"ok": True}
+
+
+if os.environ.get("NUTRAIGENT_AUTOSTOP") == "1":
+    presence.start_watchdog(PRESENCE, busy=lambda: bool(
+        chatflow.RUNNING or plans_api.RUNNING or recommend_api.RUNNING))
 
 
 # One-process mode: serve the built frontend (frontend/dist) from the API server. Registered last so /api wins.

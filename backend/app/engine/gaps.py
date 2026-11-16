@@ -26,7 +26,7 @@ def assess(conn: sqlite3.Connection, day: str) -> dict:
     for c in comp:
         if c["status"] == "unknown":
             unknown.append(c["nutrient"])
-        if c["kind"] == "target" and c["status"] in SHORT_STATUSES:
+        if c["kind"] in ("target", "min") and c["status"] in SHORT_STATUSES:
             short.append({"nutrient": c["nutrient"], "unit": c["unit"], "intake": c["intake"],
                           "target": c["target"], "percent": c["percent"],
                           "gap": round(c["target"] - c["intake"], 1)})
