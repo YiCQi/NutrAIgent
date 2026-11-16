@@ -19,6 +19,11 @@
 - Stack: Python + FastAPI backend, React (Vite) frontend, SQLite. (User chose 2026-11-16.)
 - Vision/modules/roadmap: see README.md.
 
+## Importer status
+- SR Legacy imported: 7793 foods, 89,435 nutrient values, 14,449 portions (12 core nutrients only). Spot check: raw whole egg 143 kcal, 12.56 g protein (matches USDA). Local DB `backend/data/nutraigent.db` (gitignored); run `python scripts/import_usda_sr_legacy.py --db <path>`. Default DB is `~/.nutraigent/nutraigent.db`, which is NOT yet populated.
+- `state` derived from 'raw'/'cooked' words only (1386 raw, 1778 cooked, 4629 unknown). `edible_portion_pct` NULL for SR (not in CSV).
+- Only 12 nutrients mapped; extend `NUTRIENT_MAP` + `CORE_NUTRIENTS` in `app/db.py` for more vitamins/minerals.
+
 ## Data downloaded (2026-11-16, in `backend/data/raw/`, gitignored)
 - `cofid/CoFID_2021.xlsx` (GOV.UK, OGL v3.0, edition 19 Mar 2021). Sheets `1.2 Factors` (edible proportion), `1.3 Proximates`, `1.4 Inorganics`, `1.5 Vitamins`, ... Header rows: names, then nutrient tag (e.g. WATER), then name; data starts row 4. Column A = Food Code, B = Food Name, Group, etc. Blank/'N' cells need care: confirm CoFID missing-value conventions (e.g. 'N', 'Tr') in user guide before import.
 - `usda_sr_legacy/` (FDC SR Legacy CSV, 2018-04, CC0): COMPLETE (food, food_nutrient, nutrient, food_portion, measure_unit...).
@@ -27,7 +32,7 @@
 - Python: `openpyxl` installed in backend venv only (not yet in pyproject).
 
 ## Next steps
-1. Write importers in `backend/scripts/`: SR Legacy first (complete), then CoFID. Then Foundation Foods from JSON.
+1. Importers: SR Legacy DONE (`backend/scripts/import_usda_sr_legacy.py`). TODO: CoFID, then Foundation Foods JSON. Reuse the nutrient-code mapping approach and zero-vs-missing rules (docstring in SR script).
 2. Frontend: profile form, food search, intake logging, target trace display.
 3. Micronutrient targets once reference standard chosen.
 4. Roadmap phase 2: BYOK AI provider interface.
