@@ -3,12 +3,14 @@ from datetime import date as date_cls
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import db, foods
 from .ai import agent, providers, tools as ai_tools
 from .engine import analysis, targets
 
+NL = chr(10)
 app = FastAPI(title="NutrAIgent", version="0.1.0")
 _conn = None
 
@@ -185,3 +187,25 @@ def ai_chat(body: ChatIn, conn=Depends(get_conn), make=Depends(get_provider_fact
         return agent.run_chat(ctx, provider, [m.model_dump() for m in body.messages])
     except providers.ProviderError as e:
         raise HTTPException(502, str(e))
+
+
+@app.post("/api/ai/chat/stream")
+def ai_chat_stream(body: ChatIn, conn=Depends(get_conn), make=Depends(get_provider_factory)):
+    """NDJSON stream of progress events (see agent.iter_chat); errors arrive as {"type":"error"}."""
+    cfg = providers.ProviderConfig(
+        provider=_setting(conn, "ai_provider", "anthropic"), model=_setting(conn, "ai_model"),
+        api_key=_setting(conn, "ai_api_key"), base_url=_setting(conn, "ai_base_url"))
+    history = [m.model_dump() for m in body.messages]
+
+    def gen():
+        try:
+            provider = make(cfg)
+            ctx = ai_tools.Context(conn=conn, today=date_cls.today().isoformat())
+            for ev in agent.iter_chat(ctx, provider, history):
+                yield json.dumps(ev, default=str) + NL
+        except providers.ProviderError as e:
+            yield json.dumps({"type": "error", "message": str(e)}) + NL
+        except Exception as e:  # keep the stream well-formed for the UI
+            yield json.dumps({"type": "error", "message": f"internal error: {type(e).__name__}"}) + NL
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson")

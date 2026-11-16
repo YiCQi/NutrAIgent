@@ -33,3 +33,9 @@ pre { background: #8881; padding: .5rem; overflow: auto; }
 .chatinput input { flex: 1; }
 .card { border: 1px solid #2a7; border-radius: .5rem; padding: .5rem .75rem; margin: .5rem 0; }
 .tools { font-size: .8rem; color: #888; }
+.progress ul { list-style: none; margin: .4rem 0; padding: 0; }
+.progress li { color: #888; }
+.progress li.done { color: inherit; }
+.bar { height: 4px; background: #8883; border-radius: 2px; overflow: hidden; margin-bottom: .4rem; }
+.bar span { display: block; height: 100%; width: 35%; background: #2a7; animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }

@@ -28,6 +28,33 @@ export const api = {
   getAISettings: () => req("GET", "/api/ai/settings"),
   putAISettings: (s) => req("PUT", "/api/ai/settings", s),
   chat: (messages) => req("POST", "/api/ai/chat", { messages }),
+  // Streams NDJSON progress events; resolves with the final 'done' event, rejects on 'error'.
+  chatStream: async (messages, onEvent) => {
+    const r = await fetch("/api/ai/chat/stream", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages }),
+    });
+    if (!r.ok || !r.body) throw new Error(`request failed (${r.status})`);
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "", done = null;
+    const handle = (line) => {
+      if (!line.trim()) return;
+      const ev = JSON.parse(line);
+      if (ev.type === "error") throw new Error(ev.message);
+      if (ev.type === "done") done = ev;
+      onEvent(ev);
+    };
+    for (;;) {
+      const { value, done: fin } = await reader.read();
+      if (fin) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf(String.fromCharCode(10))) >= 0) { handle(buf.slice(0, i)); buf = buf.slice(i + 1); }
+    }
+    handle(buf);
+    if (!done) throw new Error("connection closed before the reply finished");
+    return done;
+  },
   getIntake: (date) => req("GET", `/api/intake/${date}`),
 };
 

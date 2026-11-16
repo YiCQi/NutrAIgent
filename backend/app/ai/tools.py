@@ -68,11 +68,13 @@ def call(ctx: Context, name: str, args: dict) -> dict:
     conn = ctx.conn
     try:
         if name == "search_foods":
-            limit = min(int(args.get("limit") or 8), 15)
+            limit = min(int(args.get("limit") or 5), 10)
             out = []
             for f in foods.search(conn, str(args.get("query", "")), limit):
+                f.pop("edible_portion_pct", None)
                 d = foods.detail(conn, f["id"])
                 f["per_100g"] = {n["code"]: n["value"] for n in d["nutrients"] if n["code"] in KEY_NUTRIENTS}
+                f["portions"] = [{"description": p["description"], "grams": p["grams"]} for p in d["portions"][:3]]
                 out.append(f)
             return {"results": out}
         if name == "get_food":

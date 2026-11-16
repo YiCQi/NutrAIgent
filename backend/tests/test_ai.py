@@ -47,13 +47,42 @@ def test_agent_logs_via_tools_without_saving(conn):
     ])
     ctx = tools.Context(conn=conn, today="2026-01-02")
     out = agent.run_chat(ctx, p, [{"role": "user", "content": "I ate an egg"}])
-    assert out["reply"] == "Proposed 2 eggs."
+    assert out["reply"].startswith("Prepared 1 log entry")  # ends right after propose (no extra round trip)
+    assert len(p.script) == 1
     assert out["proposals"] == [{"food_id": 1, "food_name": "Egg, whole, raw", "grams": 100.0,
                                  "meal": "breakfast", "log_date": "2026-01-02"}]
     assert conn.execute("SELECT COUNT(*) FROM intake_log").fetchone()[0] == 0  # never saved
     # tool result fed back to the model carries DB numbers
     fed = json.dumps(p.seen[1])
     assert "143" in fed and "Egg, whole, raw" in fed
+
+
+def test_early_finish_uses_text_sent_with_propose(conn):
+    first = {"content": [{"type": "text", "text": "Assumed 1 egg = 50 g"},
+                         {"type": "tool_use", "id": "1", "name": "propose_log_entries",
+                          "input": {"entries": [{"food_id": 1, "grams": 50}]}}], "stop": "tool_use"}
+    out = agent.run_chat(tools.Context(conn=conn, today="2026-01-02"), Scripted([first]),
+                         [{"role": "user", "content": "egg"}])
+    assert out["reply"] == "Assumed 1 egg = 50 g" and len(out["proposals"]) == 1
+
+
+def test_invalid_proposal_keeps_looping(conn):
+    bad = tool_use("1", "propose_log_entries", entries=[{"food_id": 99, "grams": 5}])
+    out = agent.run_chat(tools.Context(conn=conn, today="2026-01-02"), Scripted([bad, text("sorry")]),
+                         [{"role": "user", "content": "x"}])
+    assert out["reply"] == "sorry" and out["proposals"] == []
+
+
+def test_stream_endpoint(client):
+    fake = Scripted([tool_use("1", "get_targets"), text("done")])
+    app.dependency_overrides[get_provider_factory] = lambda: (lambda cfg: fake)
+    r = client.post("/api/ai/chat/stream", json={"messages": [{"role": "user", "content": "hi"}]})
+    evs = [json.loads(line) for line in r.text.splitlines()]
+    app.dependency_overrides.pop(get_provider_factory)
+    assert [e["type"] for e in evs] == ["model", "tool", "tool_done", "model", "done"]
+    assert evs[-1]["reply"] == "done"
+    r = client.post("/api/ai/chat/stream", json={"messages": [{"role": "user", "content": "hi"}]})
+    assert json.loads(r.text.splitlines()[0])["type"] == "error"  # no key
 
 
 def test_tool_validation(conn):
