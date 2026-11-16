@@ -5,6 +5,15 @@
 - Remote: https://github.com/YiCQi/NutrAIgent. Policy: always commit and push after each task.
 - Commit identity (repo-local): YiCQi + GitHub noreply email.
 
+## README + docs rewrite (2026-11-16)
+- `README.md` is now user-facing, bilingual (中文 first, then English), short: download -> prerequisites -> `start.bat` -> load food data (once) -> using each page -> AI setup + privacy -> troubleshooting. Screenshots in `docs/images/` (today, assistant, recipes, profile; taken from a scratch DB with sample data, not the user's DB).
+- Technical detail moved to `docs/zh/technical.md` and `docs/en/technical.md` (architecture, data sources and missing-data rules, provisional formulas, AI key storage and privacy, developer commands, roadmap).
+- Verified: 40 backend tests pass; the three importers run (into a scratch DB) with the counts listed in the sections above; README import flags match script args (`--xlsx`, `--json`, `--raw`, `--db`).
+- Gap: a fresh clone has an EMPTY food DB. Users must download the raw datasets and run the three importers (README step 4). No one-click import yet.
+- Gap: `start.bat`/`start.ps1` are Windows-only and require Python 3.11+ and Node.js on PATH. macOS/Linux steps in docs are untested.
+- Not verified: "Download ZIP" link assumes the GitHub repo is public.
+- Changes are uncommitted (committing only on user request).
+
 ## Phase 2 (AI, BYOK) - built 2026-11-16, NOT yet tested against a real provider
 - `backend/app/ai/`: `providers.py` (provider-independent `Provider.complete()`; adapters `anthropic` and `openai_compatible` [OpenAI/OpenRouter/Ollama/LM Studio/etc., base_url configurable]; add new vendors via `REGISTRY`), `tools.py` (deterministic tools: search_foods, get_food, get_targets, get_daily_intake, propose_log_entries), `agent.py` (tool loop, max 6 steps, system prompt forbids stating numbers not from tools).
 - NL logging: LLM searches DB and calls `propose_log_entries`; nothing is saved until the user clicks Confirm in the UI (Assistant tab -> POST /api/intake per entry).
