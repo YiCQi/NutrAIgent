@@ -11,3 +11,6 @@ dist/
 .vscode/
 *.egg-info/
 backend/data/raw/
+
+# local-only project handoff (not published)
+HANDOFF.md
