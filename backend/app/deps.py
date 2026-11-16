@@ -9,3 +9,9 @@ def get_conn():
     if _conn is None:
         _conn = db.connect()
     return _conn
+
+
+def get_provider_factory():
+    """Overridable in tests."""
+    from .ai import providers
+    return providers.make_provider

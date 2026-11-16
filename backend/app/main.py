@@ -6,14 +6,15 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import foods, recipes_api
-from .deps import get_conn
+from . import foods, jobs, plans_api, recipes_api
+from .deps import get_conn, get_provider_factory
 from .ai import chatflow, providers
 from .engine import analysis, targets
 
 NL = chr(10)
 app = FastAPI(title="NutrAIgent", version="0.1.0")
 app.include_router(recipes_api.router)
+app.include_router(plans_api.router)
 
 
 class ProfileIn(BaseModel):
@@ -165,11 +166,6 @@ def put_ai_settings(s: AISettingsIn, conn=Depends(get_conn)):
     return _ai_settings_out(conn)
 
 
-def get_provider_factory():
-    """Overridable in tests."""
-    return providers.make_provider
-
-
 def _conv_or_404(conn, conv_id):
     c = conn.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,)).fetchone()
     if c is None:
@@ -194,7 +190,8 @@ def create_conversation(conn=Depends(get_conn)):
 def get_conversation(conv_id: int, conn=Depends(get_conn)):
     c = _conv_or_404(conn, conv_id)
     rows = conn.execute("SELECT * FROM messages WHERE conversation_id = ? ORDER BY id", (conv_id,)).fetchall()
-    return {"id": c["id"], "title": c["title"], "messages": [chatflow.message_dict(r) for r in rows]}
+    return {"id": c["id"], "title": c["title"], "pending": conv_id in chatflow.RUNNING,
+            "messages": [chatflow.message_dict(r) for r in rows]}
 
 
 @app.delete("/api/conversations/{conv_id}", status_code=204)
@@ -223,14 +220,13 @@ def chat_stream(conv_id: int, body: ChatIn, conn=Depends(get_conn), make=Depends
         provider=_setting(conn, "ai_provider", "anthropic"), model=_setting(conn, "ai_model"),
         api_key=_setting(conn, "ai_api_key"), base_url=_setting(conn, "ai_base_url"))
 
-    def gen():
-        try:
-            provider = make(cfg)
-            for ev in chatflow.run_turn(conn, provider, conv_id, body.content, date_cls.today().isoformat(), body.lang):
-                yield json.dumps(ev, default=str) + NL
-        except providers.ProviderError as e:
-            yield json.dumps({"type": "error", "message": str(e)}) + NL
-        except Exception as e:  # keep the stream well-formed for the UI
-            yield json.dumps({"type": "error", "message": f"internal error: {type(e).__name__}"}) + NL
+    if conv_id in chatflow.RUNNING:
+        raise HTTPException(409, "a reply is already being generated for this conversation")
+    chatflow.RUNNING.add(conv_id)
 
-    return StreamingResponse(gen(), media_type="application/x-ndjson")
+    def events():
+        provider = make(cfg)
+        yield from chatflow.run_turn(conn, provider, conv_id, body.content, date_cls.today().isoformat(), body.lang)
+
+    return StreamingResponse(jobs.stream_in_background(events, lambda: chatflow.RUNNING.discard(conv_id)),
+                             media_type="application/x-ndjson")

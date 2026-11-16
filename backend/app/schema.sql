@@ -1,6 +1,6 @@
--- Schema v5. NULL value in food_nutrients = MISSING data; 0 = measured zero.
+-- Schema v6. NULL value in food_nutrients = MISSING data; 0 = measured zero.
 CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '5');
+INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '6');
 
 CREATE TABLE IF NOT EXISTS sources (
   id INTEGER PRIMARY KEY,
@@ -107,3 +107,24 @@ CREATE TABLE IF NOT EXISTS recipe_ingredients (
   position INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_recipe_ing ON recipe_ingredients(recipe_food_id);
+
+-- Meal plans (AI proposes dishes; matching, scaling and nutrients are deterministic).
+CREATE TABLE IF NOT EXISTS meal_plans (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  start_date TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS plan_items (
+  id INTEGER PRIMARY KEY,
+  plan_id INTEGER NOT NULL REFERENCES meal_plans(id) ON DELETE CASCADE,
+  plan_date TEXT NOT NULL,
+  meal TEXT NOT NULL CHECK (meal IN ('breakfast','lunch','dinner','snack')),
+  position INTEGER NOT NULL DEFAULT 0,
+  label TEXT NOT NULL,
+  food_id INTEGER NOT NULL REFERENCES foods(id),
+  grams REAL NOT NULL CHECK (grams > 0)
+);
+CREATE INDEX IF NOT EXISTS idx_plan_items ON plan_items(plan_id, plan_date);

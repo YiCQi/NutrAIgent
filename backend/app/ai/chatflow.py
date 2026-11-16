@@ -7,6 +7,7 @@ from . import agent, nllog, tools
 from .providers import Provider
 
 HISTORY_LIMIT = 20
+RUNNING: set[int] = set()  # conversation ids with a turn in progress (survives client disconnects)
 
 
 def _save(conn, conv_id, role, content, meta=None):
