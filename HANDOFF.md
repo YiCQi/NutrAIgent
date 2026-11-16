@@ -24,6 +24,10 @@
 - `state` derived from 'raw'/'cooked' words only (1386 raw, 1778 cooked, 4629 unknown). `edible_portion_pct` NULL for SR (not in CSV).
 - Only 12 nutrients mapped; extend `NUTRIENT_MAP` + `CORE_NUTRIENTS` in `app/db.py` for more vitamins/minerals.
 
+- CoFID imported: 2887 foods, 33,754 value rows (1,927 'Tr', 1,246 'N'). Rules: 'Tr' -> value 0.0 + `qualifier='trace'`; 'N' -> NULL + `qualifier='N'` (counts as missing); blank -> no row. Schema bumped to v2 (`food_nutrients.qualifier`, auto-migrated in `init_db`). Analysis engine does not yet surface `trace` qualifier (trace counts as 0).
+- CoFID choices: fibre = AOAC fibre; sat fat = per 100 g food; `food_group` = CoFID group code (e.g. DR, DG; names not in workbook, see user guide PDF); `edible_portion_pct` = Edible proportion x100 ('N' -> NULL; 2853/2887 set); sheets joined on (code, name) because code 13-669 is duplicated in source (2nd stored `13-669#2`). Alcoholic drinks are per 100 ml, not converted (unit caveat).
+- Local DB `backend/data/nutraigent.db` now holds SR Legacy + CoFID. 6 tests pass.
+
 ## Data downloaded (2026-11-16, in `backend/data/raw/`, gitignored)
 - `cofid/CoFID_2021.xlsx` (GOV.UK, OGL v3.0, edition 19 Mar 2021). Sheets `1.2 Factors` (edible proportion), `1.3 Proximates`, `1.4 Inorganics`, `1.5 Vitamins`, ... Header rows: names, then nutrient tag (e.g. WATER), then name; data starts row 4. Column A = Food Code, B = Food Name, Group, etc. Blank/'N' cells need care: confirm CoFID missing-value conventions (e.g. 'N', 'Tr') in user guide before import.
 - `usda_sr_legacy/` (FDC SR Legacy CSV, 2018-04, CC0): COMPLETE (food, food_nutrient, nutrient, food_portion, measure_unit...).
@@ -32,7 +36,7 @@
 - Python: `openpyxl` installed in backend venv only (not yet in pyproject).
 
 ## Next steps
-1. Importers: SR Legacy DONE (`backend/scripts/import_usda_sr_legacy.py`). TODO: CoFID, then Foundation Foods JSON. Reuse the nutrient-code mapping approach and zero-vs-missing rules (docstring in SR script).
+1. Importers: SR Legacy DONE (`backend/scripts/import_usda_sr_legacy.py`). CoFID DONE (`backend/scripts/import_cofid.py`). TODO: Foundation Foods JSON. Reuse nutrient-code mapping and zero-vs-missing rules (docstrings in importers). Also TODO: populate default DB, add `openpyxl` to pyproject, merge/dedupe same food across sources (none yet).
 2. Frontend: profile form, food search, intake logging, target trace display.
 3. Micronutrient targets once reference standard chosen.
 4. Roadmap phase 2: BYOK AI provider interface.

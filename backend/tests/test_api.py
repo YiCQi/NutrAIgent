@@ -12,8 +12,8 @@ def conn():
     c.execute("INSERT INTO sources (code, name) VALUES ('test','Test')")
     c.execute("INSERT INTO foods (name, source_id, state) VALUES ('Oats', 1, 'raw')")
     ids = {r["code"]: r["id"] for r in c.execute("SELECT id, code FROM nutrients")}
-    c.execute("INSERT INTO food_nutrients VALUES (1,?,?)", (ids["energy_kcal"], 380.0))
-    c.execute("INSERT INTO food_nutrients VALUES (1,?,?)", (ids["sodium_mg"], 0.0))  # true zero
+    c.execute("INSERT INTO food_nutrients (food_id, nutrient_id, value_per_100g) VALUES (1,?,?)", (ids["energy_kcal"], 380.0))
+    c.execute("INSERT INTO food_nutrients (food_id, nutrient_id, value_per_100g) VALUES (1,?,?)", (ids["sodium_mg"], 0.0))  # true zero
     # fibre_g absent -> missing
     c.commit()
     return c

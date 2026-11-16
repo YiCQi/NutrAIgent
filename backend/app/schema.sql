@@ -1,6 +1,6 @@
--- Schema v1. NULL value in food_nutrients = MISSING data; 0 = measured zero.
+-- Schema v2. NULL value in food_nutrients = MISSING data; 0 = measured zero.
 CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '1');
+INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '2');
 
 CREATE TABLE IF NOT EXISTS sources (
   id INTEGER PRIMARY KEY,
@@ -31,11 +31,14 @@ CREATE TABLE IF NOT EXISTS foods (
 );
 CREATE INDEX IF NOT EXISTS idx_foods_name ON foods(name);
 
--- Values are per 100 g of edible portion.
+-- Values are per 100 g (some CoFID alcoholic drinks: per 100 ml).
+-- qualifier: NULL = plain value; 'trace' = source says trace (value stored as 0.0, true amount > 0
+-- but unquantified); 'N' = present in significant amount but no reliable figure (value NULL).
 CREATE TABLE IF NOT EXISTS food_nutrients (
   food_id INTEGER NOT NULL REFERENCES foods(id) ON DELETE CASCADE,
   nutrient_id INTEGER NOT NULL REFERENCES nutrients(id),
   value_per_100g REAL CHECK (value_per_100g IS NULL OR value_per_100g >= 0),
+  qualifier TEXT CHECK (qualifier IS NULL OR qualifier IN ('trace','N')),
   PRIMARY KEY (food_id, nutrient_id)
 );
 

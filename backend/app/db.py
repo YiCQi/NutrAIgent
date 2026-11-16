@@ -33,6 +33,12 @@ def connect(path: Path | str = DEFAULT_DB) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
+    # migration v1 -> v2: qualifier column on food_nutrients
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(food_nutrients)")]
+    if "qualifier" not in cols:
+        conn.execute("ALTER TABLE food_nutrients ADD COLUMN qualifier TEXT "
+                     "CHECK (qualifier IS NULL OR qualifier IN ('trace','N'))")
+        conn.execute("UPDATE schema_meta SET value = '2' WHERE key = 'schema_version'")
     conn.executemany(
         "INSERT OR IGNORE INTO nutrients (code, name, unit, category) VALUES (?,?,?,?)",
         CORE_NUTRIENTS,
