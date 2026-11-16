@@ -56,6 +56,9 @@ const en = {
   "assistant.confirm": "Confirm and log ({n})", "assistant.discard": "Discard", "assistant.logged": "Logged to your diary",
   "assistant.discarded": "Discarded", "assistant.saveRecipe": "Also save as a recipe", "assistant.recipeName": "Recipe name",
   "assistant.yield": "Cooked weight (g)", "assistant.eat": "I ate (g)", "assistant.dish": "Home-cooked dish",
+  "assistant.predicted": "AI-predicted", "assistant.sauce": "Sauce / seasoning", "assistant.nutTitle": "Nutrition breakdown",
+  "assistant.ingredient": "Ingredient", "assistant.sauceTotal": "Sauces & seasonings", "assistant.wholeDish": "Whole dish",
+  "assistant.youEat": "You eat", "assistant.nutNote": "Numbers come from the food database. A dash means an ingredient has no data for that nutrient.",
   "assistant.recipeSaved": "Recipe “{name}” saved", "assistant.working": "Working… {s}s",
   "assistant.settings": "AI provider settings (bring your own key)", "assistant.provider": "Provider", "assistant.model": "Model",
   "assistant.baseUrl": "Base URL", "assistant.apiKey": "API key", "assistant.keySaved": "a key is saved; leave blank to keep it",
@@ -63,7 +66,7 @@ const en = {
   "assistant.privacy": "The key is stored only in your local database and sent only to the provider above. Your messages and the food/intake data the assistant looks up are sent to that provider. Nothing else leaves this machine.",
   "basis.grams": "amount you gave", "basis.ml": "1 ml taken as 1 g (approximate)", "basis.portion": "database portion: {x}",
   "basis.estimate": "AI estimate — please check", "basis.default": "no amount given — default 100 g",
-  "basis.defaultSmall": "no amount given — default 10 g, please set", "basis.none": "no database match",
+  "basis.defaultSmall": "no amount given — default 10 g, please set", "basis.none": "no database match", "basis.predicted": "AI-predicted — please check",
   "status.understanding": "Understanding your message…", "status.matching": "Matching “{arg}” in the food database…",
   "status.thinking": "Thinking…", "status.tool_search_foods": "Searching foods: {arg}", "status.tool_get_food": "Reading food details",
   "status.tool_get_targets": "Reading your targets", "status.tool_get_daily_intake": "Reading intake for {arg}",
@@ -140,6 +143,9 @@ const zh = {
   "assistant.confirm": "确认并记录（{n}）", "assistant.discard": "放弃", "assistant.logged": "已记入饮食日记",
   "assistant.discarded": "已放弃", "assistant.saveRecipe": "同时保存为菜谱", "assistant.recipeName": "菜谱名称",
   "assistant.yield": "成品重量（克）", "assistant.eat": "我吃了（克）", "assistant.dish": "家常菜",
+  "assistant.predicted": "AI 预测", "assistant.sauce": "酱汁/调料", "assistant.nutTitle": "营养拆解",
+  "assistant.ingredient": "食材", "assistant.sauceTotal": "酱汁/调料合计", "assistant.wholeDish": "整道菜",
+  "assistant.youEat": "你吃的量", "assistant.nutNote": "营养数值来自食物数据库；“—”表示该食材缺少此项数据。",
   "assistant.recipeSaved": "菜谱“{name}”已保存", "assistant.working": "处理中… {s} 秒",
   "assistant.settings": "AI 服务设置（自带密钥）", "assistant.provider": "服务商", "assistant.model": "模型",
   "assistant.baseUrl": "接口地址", "assistant.apiKey": "API 密钥", "assistant.keySaved": "已保存密钥；留空则保持不变",
@@ -147,7 +153,7 @@ const zh = {
   "assistant.privacy": "密钥只保存在本机数据库，只会发送给上面选择的服务商。你的消息，以及助手查询到的食物/摄入数据，会发送给该服务商。除此之外没有任何数据离开本机。",
   "basis.grams": "你提供的克数", "basis.ml": "1 毫升按 1 克估算（近似）", "basis.portion": "数据库份量：{x}",
   "basis.estimate": "AI 估算，请核对", "basis.default": "未给出数量，默认 100 克",
-  "basis.defaultSmall": "未给出数量，默认 10 克，请自行调整", "basis.none": "数据库中没有匹配",
+  "basis.defaultSmall": "未给出数量，默认 10 克，请自行调整", "basis.none": "数据库中没有匹配", "basis.predicted": "AI 预测，请核对",
   "status.understanding": "正在理解你的话…", "status.matching": "正在匹配“{arg}”…",
   "status.thinking": "思考中…", "status.tool_search_foods": "搜索食物：{arg}", "status.tool_get_food": "读取食物详情",
   "status.tool_get_targets": "读取你的目标", "status.tool_get_daily_intake": "读取 {arg} 的摄入",
@@ -207,6 +213,7 @@ export function basisLabel(t, s) {
   if (s.startsWith("typical weight")) return t("basis.estimate");
   if (s.startsWith("no amount given (default 10 g")) return t("basis.defaultSmall");
   if (s.startsWith("default 100 g")) return t("basis.default");
+  if (s.startsWith("predicted by AI")) return t("basis.predicted");
   if (s.startsWith("no database match")) return t("basis.none");
   return s;
 }

@@ -3,6 +3,57 @@ import { api } from "../api.js";
 import { basisLabel, useI18n } from "../i18n.jsx";
 
 const MEALS = ["breakfast", "lunch", "dinner", "snack", "other"];
+const NUT_COLS = [["energy_kcal", "col.kcal"], ["protein_g", "col.protein"], ["carbohydrate_g", "col.carbs"],
+  ["fat_g", "col.fat"], ["sodium_mg", "col.sodium"]];
+
+// Sum per-100 g values over rows at their grams. Any row missing a value -> null (same rule as recipes).
+function sumNutrition(rows) {
+  const out = {};
+  for (const [code] of NUT_COLS) {
+    let total = 0, complete = rows.length > 0;
+    for (const r of rows) {
+      const v = r.per100?.[code];
+      if (v == null) { complete = false; break; }
+      total += (v * Number(r.grams || 0)) / 100;
+    }
+    out[code] = complete ? total : null;
+  }
+  return out;
+}
+
+const fmt = (v) => (v == null || Number.isNaN(v) ? "—" : v >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
+
+function NutritionBlock({ p }) {
+  const { t } = useI18n();
+  const inc = p.ingredients.filter((g) => g.include && g.food_id && g.grams > 0);
+  if (!inc.length) return null;
+  const wholeG = inc.reduce((s, g) => s + Number(g.grams), 0);
+  const yieldG = Number(p.yield_g) > 0 ? Number(p.yield_g) : wholeG;
+  const ratio = (Number(p.eat_g) || 0) / yieldG;
+  const whole = sumNutrition(inc);
+  const sauces = inc.filter((g) => g.role === "sauce");
+  const sauceG = sauces.reduce((s, g) => s + Number(g.grams), 0);
+  const eaten = Object.fromEntries(NUT_COLS.map(([c]) => [c, whole[c] == null ? null : whole[c] * ratio]));
+  const cells = (vals) => NUT_COLS.map(([c]) => <td key={c}>{fmt(vals[c])}</td>);
+  return (
+    <div className="nut-block">
+      <small className="muted" style={{ display: "block", margin: "10px 0 4px" }}>{t("assistant.nutTitle")}</small>
+      <table>
+        <thead><tr><th>{t("assistant.ingredient")}</th>{NUT_COLS.map(([c, k]) => <th key={c}>{t(k)}</th>)}</tr></thead>
+        <tbody>
+          {p.ingredients.filter((g) => g.food_id).map((g, k) => {
+            const on = g.include && g.grams > 0;
+            return <tr key={k} style={{ opacity: on ? 1 : 0.4 }}><td>{g.label}</td>{cells(on ? sumNutrition([g]) : {})}</tr>;
+          })}
+          <tr className="sub"><td>{t("assistant.sauceTotal")} · {Math.round(sauceG)} g</td>{cells(sumNutrition(sauces))}</tr>
+          <tr className="sub"><td>{t("assistant.wholeDish")} · {Math.round(wholeG)} g</td>{cells(whole)}</tr>
+          <tr className="sub"><td>{t("assistant.youEat")} · {Math.round(Number(p.eat_g) || 0)} g</td>{cells(eaten)}</tr>
+        </tbody>
+      </table>
+      <small className="muted">{t("assistant.nutNote")}</small>
+    </div>
+  );
+}
 
 function FoodSelect({ row, onChange }) {
   const { t } = useI18n();
@@ -96,13 +147,14 @@ export default function Proposals({ message, onSaved }) {
               {p.ingredients.map((g, k) => (
                 <tr key={k}>
                   <td><input type="checkbox" checked={g.include} disabled={!g.food_id} onChange={(e) => updIng(i, k, { include: e.target.checked })} /></td>
-                  <td>{g.label}</td>
+                  <td>{g.label}{g.role === "sauce" && <span className="chip" style={{ marginLeft: 6 }}>{t("assistant.sauce")}</span>}{g.predicted && <span className="chip predicted" style={{ marginLeft: 6 }}>{t("assistant.predicted")}</span>}</td>
                   <td><FoodSelect row={g} onChange={(patch) => updIng(i, k, patch)} /></td>
                   <td><input type="number" min="0.1" step="0.1" style={{ width: "5.2rem" }} value={g.grams ?? ""} disabled={!g.food_id} onChange={(e) => updIng(i, k, { grams: Number(e.target.value) })} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <NutritionBlock p={p} />
         </div>
       ) : (
         <div className="proposal" key={i} style={{ opacity: p.done ? .55 : 1 }}>
