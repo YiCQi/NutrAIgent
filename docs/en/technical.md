@@ -36,7 +36,7 @@ Totals never count a missing value as zero.
 
 ### Importing the data
 
-The database starts empty. The importers read raw files you download yourself (they are not in the repository, see the [README](../../README.md#step-4-load-food-data-once)).
+The database starts empty. The importers read raw files you download yourself (they are not in the repository, see the [README](../../README.md#3-load-food-data-once)).
 
 ```
 backend/scripts/import_cofid.py            [--xlsx FILE] [--db PATH]

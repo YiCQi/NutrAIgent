@@ -1,6 +1,6 @@
 # NutrAIgent
 
-Track your food and nutrition on your own computer, with an optional AI assistant. Your data stays on your machine.
+Local nutrition tracker with an optional AI assistant. Data stays on your machine.
 
 [中文](#中文) · [English](#english)
 
@@ -10,166 +10,120 @@ Track your food and nutrition on your own computer, with an optional AI assistan
 
 ## 中文
 
-### 第一步：下载
+### 1. 获取与准备
 
-1. 打开 https://github.com/YiCQi/NutrAIgent
-2. 点击绿色的 **Code** 按钮，选择 **Download ZIP**。
-3. 解压到任意文件夹。
+- 下载源码（[Download ZIP](https://github.com/YiCQi/NutrAIgent)，或 `git clone https://github.com/YiCQi/NutrAIgent.git`）。
+- 安装 [Python 3.11+](https://www.python.org/downloads/)（勾选 *Add to PATH*）和 [Node.js LTS](https://nodejs.org/)。
 
-### 第二步：安装两个软件（只需一次）
+### 2. 启动
 
-- [Python 3.11 或更高版本](https://www.python.org/downloads/)：安装时勾选 **Add python.exe to PATH**。
-- [Node.js LTS](https://nodejs.org/)：默认选项安装即可。
+双击 `start.bat`。首次运行会安装依赖，需要几分钟；完成后浏览器打开 http://127.0.0.1:8000 。关闭窗口即停止。
 
-### 第三步：启动
+### 3. 导入食物数据（仅一次）
 
-双击解压文件夹里的 **`start.bat`**。
+未导入时食物搜索为空。下载以下数据集并解压到对应目录：
 
-- 首次启动需要几分钟，用于安装组件。
-- 浏览器会自动打开 http://127.0.0.1:8000
-- 关闭黑色窗口即可停止应用。
+| 数据集 | 下载 | 放置位置 |
+|---|---|---|
+| 英国 CoFID 2021（xlsx） | [GOV.UK](https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid) | `backend\data\raw\cofid\CoFID_2021.xlsx` |
+| USDA SR Legacy（CSV） | [FDC](https://fdc.nal.usda.gov/download-datasets/) | `backend\data\raw\usda_sr_legacy\` |
+| USDA Foundation Foods（JSON） | [FDC](https://fdc.nal.usda.gov/download-datasets/) | `backend\data\raw\usda_foundation_json\` |
 
-### 第四步：导入食物数据（只需一次）
-
-没有这一步，食物搜索是空的。需要先完成第三步。
-
-1. 下载以下三份免费数据：
-   - **英国 CoFID 2021**：https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid
-     下载 xlsx 文件，保存为 `backend\data\raw\cofid\CoFID_2021.xlsx`。
-   - **美国 USDA SR Legacy（CSV）**：https://fdc.nal.usda.gov/download-datasets/
-     下载后解压到 `backend\data\raw\usda_sr_legacy\`。
-   - **美国 USDA Foundation Foods（JSON）**：同一页面。
-     下载后解压到 `backend\data\raw\usda_foundation_json\`。
-2. 在项目文件夹中打开 PowerShell 或命令提示符，依次运行：
+在项目根目录运行：
 
 ```bash
 .\backend\.venv\Scripts\python backend\scripts\import_cofid.py
-```
-
-```bash
 .\backend\.venv\Scripts\python backend\scripts\import_usda_sr_legacy.py
-```
-
-```bash
 .\backend\.venv\Scripts\python backend\scripts\import_usda_foundation.py
 ```
 
-> 如果下载的文件名与上面不同，在命令后加上 `--xlsx 文件路径`（CoFID）或 `--json 文件路径`（Foundation）。
+文件名不同时，加 `--xlsx <文件>` 或 `--json <文件>`。
 
-### 第五步：开始使用
+### 4. 使用
 
-1. **个人资料**：填写年龄、性别、身高、体重、活动量和目标，然后保存。应用会计算每日热量和营养目标。
-2. **今天**：查看今天吃了什么，以及与目标的差距。
-3. **食物**：搜索食物（如"鸡蛋""米饭"），选择克数后加入今天的记录。
-4. **食谱**：保存常做的菜，应用会根据配料自动计算营养。
-5. **助手**（需先设置 AI，见第六步）：直接描述你吃了什么，例如"早餐两个鸡蛋和一碗白米饭"。检查提案，点击**确认**后保存。
-6. **餐单**（需先设置 AI）：生成几天的饮食计划，可调整后记录到每日日志。
+- **个人资料**：填写基本信息与目标，计算每日热量和营养目标。
+- **今天**：查看当日摄入与目标的差距。
+- **食物**：搜索并按克数记录。
+- **食谱**：保存常用菜品，营养由配料自动计算。
+- **助手**（需 AI）：用自然语言描述饮食，确认提案后保存。
+- **餐单**（需 AI）：生成多日计划，调整后记入日志。
 
 | 助手 | 食谱 | 个人资料 |
 |---|---|---|
 | ![Assistant](docs/images/assistant.png) | ![Recipes](docs/images/recipes.png) | ![Profile](docs/images/profile.png) |
 
-### 第六步：设置 AI（可选）
+### 5. 配置 AI（可选）
 
-助手和餐单需要你自己的 AI 服务密钥，例如 Anthropic、OpenAI、OpenRouter，或本地的 Ollama。
+在 **助手** 页展开 **AI 服务设置**，选择服务商（Anthropic、OpenAI 兼容接口、OpenRouter、Ollama 等），填写模型名和密钥。
 
-1. 打开 **助手** 页面，展开 **AI 服务设置**。
-2. 选择服务商，填写模型名和密钥，然后保存。
-
-**隐私说明：** 你的聊天文字，以及回复所需的食物数据，会发送给你选择的服务商。如果使用本地模型（如 Ollama），数据不会离开你的电脑。密钥保存在本机数据库中。营养数值始终来自本地数据库，AI 不会自行编造数值。
+聊天内容及回复所需的食物数据会发送给所选服务商；使用本地模型（如 Ollama）时数据不离开本机。密钥以明文存于本地数据库。营养数值只来自本地数据库，AI 不生成数值。
 
 ### 常见问题
 
-- **双击 `start.bat` 没有反应**：确认已安装 Python 和 Node.js，并重新打开应用。
-- **8000 端口被占用**：关闭占用该端口的程序，或运行 `.\start.ps1 -Port 9000` 换一个端口。
-- **搜不到食物**：完成第四步。
-- **目标旁显示"临时"**：目标的计算方法尚未与官方标准核对，详见[技术说明](docs/zh/technical.md#目标计算临时)。
-- **数据保存在哪里**：`C:\Users\<用户名>\.nutraigent\nutraigent.db`。备份这一个文件即可备份全部数据。
+- **`start.bat` 无反应**：检查 Python 与 Node.js 是否在 PATH 中。
+- **端口 8000 被占用**：运行 `.\start.ps1 -Port 9000`。
+- **目标旁显示"临时"**：计算公式尚未与官方标准核对，见 [技术说明](docs/zh/technical.md#目标计算临时)。
+- **数据位置**：`%USERPROFILE%\.nutraigent\nutraigent.db`，备份此文件即可。
 
-> 本应用不提供医疗建议。如有健康问题，请咨询专业人士。
-
-更多技术细节见 [技术说明](docs/zh/technical.md)。
+> 本应用不提供医疗建议。
 
 ---
 
 ## English
 
-### Step 1: Download
+### 1. Get and prepare
 
-1. Open https://github.com/YiCQi/NutrAIgent
-2. Click the green **Code** button and choose **Download ZIP**.
-3. Extract the ZIP to any folder.
+- Get the source ([Download ZIP](https://github.com/YiCQi/NutrAIgent), or `git clone https://github.com/YiCQi/NutrAIgent.git`).
+- Install [Python 3.11+](https://www.python.org/downloads/) (tick *Add to PATH*) and [Node.js LTS](https://nodejs.org/).
 
-### Step 2: Install two programs (once)
+### 2. Start
 
-- [Python 3.11 or newer](https://www.python.org/downloads/): tick **Add python.exe to PATH** during setup.
-- [Node.js LTS](https://nodejs.org/): default options are fine.
+Run `start.bat`. The first run installs dependencies and takes a few minutes; the app then opens at http://127.0.0.1:8000 . Close the window to stop.
 
-### Step 3: Start
+### 3. Load food data (once)
 
-Double-click **`start.bat`** in the extracted folder.
+Food search is empty until this is done. Download and extract these datasets:
 
-- The first start takes a few minutes while components install.
-- Your browser opens http://127.0.0.1:8000 automatically.
-- Close the black window to stop the app.
+| Dataset | Download | Extract to |
+|---|---|---|
+| UK CoFID 2021 (xlsx) | [GOV.UK](https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid) | `backend\data\raw\cofid\CoFID_2021.xlsx` |
+| USDA SR Legacy (CSV) | [FDC](https://fdc.nal.usda.gov/download-datasets/) | `backend\data\raw\usda_sr_legacy\` |
+| USDA Foundation Foods (JSON) | [FDC](https://fdc.nal.usda.gov/download-datasets/) | `backend\data\raw\usda_foundation_json\` |
 
-### Step 4: Load food data (once)
-
-Food search is empty until you do this. Complete Step 3 first.
-
-1. Download these three free datasets:
-   - **UK CoFID 2021**: https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid
-     Download the xlsx file and save it as `backend\data\raw\cofid\CoFID_2021.xlsx`.
-   - **USDA SR Legacy (CSV)**: https://fdc.nal.usda.gov/download-datasets/
-     Extract the download into `backend\data\raw\usda_sr_legacy\`.
-   - **USDA Foundation Foods (JSON)**: same page.
-     Extract the download into `backend\data\raw\usda_foundation_json\`.
-2. Open PowerShell or Command Prompt in the project folder and run:
+From the project root:
 
 ```bash
 .\backend\.venv\Scripts\python backend\scripts\import_cofid.py
-```
-
-```bash
 .\backend\.venv\Scripts\python backend\scripts\import_usda_sr_legacy.py
-```
-
-```bash
 .\backend\.venv\Scripts\python backend\scripts\import_usda_foundation.py
 ```
 
-> If your file names differ, add `--xlsx <file>` (CoFID) or `--json <file>` (Foundation) to the command.
+If file names differ, pass `--xlsx <file>` or `--json <file>`.
 
-### Step 5: Use the app
+### 4. Use
 
-1. **Profile**: enter your age, sex, height, weight, activity level and goal, then save. The app calculates your daily energy and nutrient targets.
-2. **Today**: see what you ate today and how it compares with your targets.
-3. **Foods**: search for a food (e.g. "egg", "rice"), choose the amount and add it to today.
-4. **Recipes**: save dishes you cook often. Nutrients are calculated from the ingredients.
-5. **Assistant** (needs AI, see Step 6): describe what you ate, e.g. "two eggs and a bowl of white rice for breakfast". Check the proposal and click **Confirm** to save.
-6. **Meal plan** (needs AI): generate a multi-day meal plan, adjust it, and log meals to your diary.
+- **Profile**: enter basics and goal; daily energy and nutrient targets are calculated.
+- **Today**: intake versus targets for the day.
+- **Foods**: search and log by grams.
+- **Recipes**: save common dishes; nutrients come from ingredients.
+- **Assistant** (needs AI): describe what you ate in plain language, review the proposal, confirm.
+- **Meal plan** (needs AI): generate a multi-day plan, adjust, log to diary.
 
 | Assistant | Recipes | Profile |
 |---|---|---|
 | ![Assistant](docs/images/assistant.png) | ![Recipes](docs/images/recipes.png) | ![Profile](docs/images/profile.png) |
 
-### Step 6: Set up AI (optional)
+### 5. Configure AI (optional)
 
-The assistant and meal plan need your own API key from a provider such as Anthropic, OpenAI, OpenRouter, or a local Ollama server.
+On the **Assistant** page, expand **AI provider settings**. Choose a provider (Anthropic, OpenAI-compatible, OpenRouter, Ollama, etc.), then enter a model name and key.
 
-1. Open the **Assistant** page and expand **AI provider settings**.
-2. Choose a provider, enter a model name and your key, then save.
-
-**Privacy:** your chat text and the food data needed for a reply are sent to the provider you chose. With a local model such as Ollama, data stays on your computer. Your key is stored in the local database. Nutrient values always come from the local food database; the AI does not invent them.
+Chat text and the food data needed for a reply go to the chosen provider; with a local model such as Ollama, data stays on your machine. The key is stored in plain text in the local database. Nutrient values come only from the local database; the AI does not generate them.
 
 ### Troubleshooting
 
-- **Double-clicking `start.bat` does nothing**: check that Python and Node.js are installed, then try again.
-- **Port 8000 is in use**: close the program using it, or run `.\start.ps1 -Port 9000`.
-- **No foods found**: complete Step 4.
-- **"Provisional" note on targets**: the target formulas have not yet been checked against an official reference. See the [technical notes](docs/en/technical.md#calculation-provisional).
-- **Where is my data?** `C:\Users\<your name>\.nutraigent\nutraigent.db`. Back up this one file to back up everything.
+- **`start.bat` does nothing**: check that Python and Node.js are on PATH.
+- **Port 8000 in use**: run `.\start.ps1 -Port 9000`.
+- **"Provisional" on targets**: formulas are not yet checked against an official standard. See [technical notes](docs/en/technical.md#calculation-provisional).
+- **Data location**: `%USERPROFILE%\.nutraigent\nutraigent.db`. Back up this file.
 
-> This app does not give medical advice. For health concerns, consult a professional.
-
-More technical details: [technical notes](docs/en/technical.md).
+> This app does not give medical advice.
