@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import featured, foods, jobs, plans_api, recipes_api
+from . import featured, foods, jobs, plans_api, recipes_api, recommend_api
 from .deps import get_conn, get_provider_factory
 from .ai import chatflow, providers
 from .engine import analysis, targets
@@ -17,6 +17,7 @@ NL = chr(10)
 app = FastAPI(title="NutrAIgent", version="0.1.0")
 app.include_router(recipes_api.router)
 app.include_router(plans_api.router)
+app.include_router(recommend_api.router)
 
 
 class ProfileIn(BaseModel):

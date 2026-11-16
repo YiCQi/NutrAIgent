@@ -1,6 +1,6 @@
--- Schema v6. NULL value in food_nutrients = MISSING data; 0 = measured zero.
+-- Schema v7. NULL value in food_nutrients = MISSING data; 0 = measured zero.
 CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '6');
+INSERT OR IGNORE INTO schema_meta VALUES ('schema_version', '7');
 
 CREATE TABLE IF NOT EXISTS sources (
   id INTEGER PRIMARY KEY,
@@ -128,3 +128,11 @@ CREATE TABLE IF NOT EXISTS plan_items (
   grams REAL NOT NULL CHECK (grams > 0)
 );
 CREATE INDEX IF NOT EXISTS idx_plan_items ON plan_items(plan_id, plan_date);
+
+-- Diet recommendation snapshot per day: assessment (short/excess nutrients at generation time) + options.
+-- Numbers inside are computed from the food database; the AI only proposed the foods.
+CREATE TABLE IF NOT EXISTS recommendations (
+  log_date TEXT PRIMARY KEY,
+  content TEXT NOT NULL,            -- JSON
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

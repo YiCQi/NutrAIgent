@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, todayISO } from "../api.js";
 import { useI18n } from "../i18n.jsx";
 import { Bar, Icon, Ring } from "../ui.jsx";
+import RecommendCard from "./RecommendCard.jsx";
 
 const MEALS = ["breakfast", "lunch", "dinner", "snack", "other"];
 const MACROS = [["protein_g", "var(--protein)"], ["carbohydrate_g", "var(--carbs)"], ["fat_g", "var(--fat)"]];
@@ -80,6 +81,8 @@ export default function TodayPage({ refreshKey, go }) {
               ))}
             </div>
           </div>
+
+          <RecommendCard date={date} refreshKey={refreshKey} />
 
           <div className="card">
             <div className="page-head" style={{ marginBottom: 8 }}>
