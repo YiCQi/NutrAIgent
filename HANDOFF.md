@@ -22,11 +22,12 @@
 ## Data downloaded (2026-11-16, in `backend/data/raw/`, gitignored)
 - `cofid/CoFID_2021.xlsx` (GOV.UK, OGL v3.0, edition 19 Mar 2021). Sheets `1.2 Factors` (edible proportion), `1.3 Proximates`, `1.4 Inorganics`, `1.5 Vitamins`, ... Header rows: names, then nutrient tag (e.g. WATER), then name; data starts row 4. Column A = Food Code, B = Food Name, Group, etc. Blank/'N' cells need care: confirm CoFID missing-value conventions (e.g. 'N', 'Tr') in user guide before import.
 - `usda_sr_legacy/` (FDC SR Legacy CSV, 2018-04, CC0): COMPLETE (food, food_nutrient, nutrient, food_portion, measure_unit...).
-- `usda_foundation/` (FDC Foundation CSV 2026-10-29, CC0): INCOMPLETE. Zip is 1.1 MB (page said ~4.1 MB) and has NO `food.csv` / `food_nutrient.csv`; only sample/lab tables. Need the JSON zip or full FDC CSV to use Foundation Foods.
+- `usda_foundation/` (FDC Foundation CSV 2026-10-29): INCOMPLETE, ignore (no food/food_nutrient tables; published archive is truncated).
+- `usda_foundation_json/FoodData_Central_foundation_food_json_2026-10-29.json` (CC0, 9.3 MB): COMPLETE. Top key `FoundationFoods`, 424 foods; per food: `fdcId`, `description`, `foodNutrients`, `foodPortions`, `foodCategory`, `nutrientConversionFactors`. Use this for Foundation Foods. Open files with `encoding='utf-8'` (Windows default is gbk).
 - Python: `openpyxl` installed in backend venv only (not yet in pyproject).
 
 ## Next steps
-1. Write importers in `backend/scripts/`: SR Legacy first (complete), then CoFID. Resolve Foundation Foods gap.
+1. Write importers in `backend/scripts/`: SR Legacy first (complete), then CoFID. Then Foundation Foods from JSON.
 2. Frontend: profile form, food search, intake logging, target trace display.
 3. Micronutrient targets once reference standard chosen.
 4. Roadmap phase 2: BYOK AI provider interface.
