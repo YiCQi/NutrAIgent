@@ -53,6 +53,18 @@ def test_intake_flow(client):
     assert fibre["status"] == "unknown" and fibre["incomplete_data"]
 
 
+def test_search_tokens_any_order(client):
+    assert [f["name"] for f in client.get("/api/foods", params={"q": "OATS"}).json()] == ["Oats"]
+    assert [f["name"] for f in client.get("/api/foods", params={"q": "oa,"}).json()] == ["Oats"]
+    assert client.get("/api/foods", params={"q": "ats"}).json() == []  # word-start only
+    assert client.get("/api/foods", params={"q": "oats nothing"}).json() == []
+    assert client.get("/api/foods", params={"q": "100%"}).json() == []  # wildcard escaped
+
+
+def test_food_detail_has_portions(client):
+    assert client.get("/api/foods/1").json()["portions"] == []
+
+
 def test_unknown_food_404(client):
     r = client.post("/api/intake", json=dict(log_date="2026-01-01", food_id=99, grams=10))
     assert r.status_code == 404

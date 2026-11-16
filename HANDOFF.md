@@ -7,8 +7,9 @@
 
 ## Layout
 - `backend/` FastAPI. `app/schema.sql` (schema v1), `app/db.py`, `app/engine/targets.py`, `app/engine/analysis.py`, `app/main.py` (routes under `/api`), `tests/`.
-- `frontend/` Vite + React; proxies `/api` to 127.0.0.1:8000. Only a status page + daily comparison table. No profile form, no food search/log UI.
+- `frontend/` Vite + React; proxies `/api` to 127.0.0.1:8000. Tabs: Log (daily entries + intake vs targets + all totals, remove entry), Foods (word-start token search, food detail with per-100g/for-N-g nutrients, portions picker, log with meal/date), Profile (form, targets, calc trace, provisional warning). Missing data shown as "no data"/"present, amount unknown (N)"; 'trace' labelled. Verified end to end in browser (profile save -> search -> log -> comparison).
 - DB path: `~/.nutraigent/nutraigent.db` (override `NUTRAIGENT_DB`).
+- Dev servers also in `.claude/launch.json` (backend :8000, frontend :5173). Search: every token must start a word in the food name (`GET /api/foods?q=`). Food detail now returns `portions` and nutrient `qualifier`.
 - Run: `cd backend && .venv/Scripts/python -m uvicorn app.main:app --reload`; `cd frontend && npm run dev`.
 
 ## PROVISIONAL defaults (unconfirmed, flagged in API trace `provisional: true`)
@@ -20,7 +21,7 @@
 - Vision/modules/roadmap: see README.md.
 
 ## Importer status
-- SR Legacy imported: 7793 foods, 89,435 nutrient values, 14,449 portions (12 core nutrients only). Spot check: raw whole egg 143 kcal, 12.56 g protein (matches USDA). Local DB `backend/data/nutraigent.db` (gitignored); run `python scripts/import_usda_sr_legacy.py --db <path>`. Default DB is `~/.nutraigent/nutraigent.db`, which is NOT yet populated.
+- SR Legacy imported: 7793 foods, 89,435 nutrient values, 14,449 portions (12 core nutrients only). Spot check: raw whole egg 143 kcal, 12.56 g protein (matches USDA). Local DB `backend/data/nutraigent.db` (gitignored); run `python scripts/import_usda_sr_legacy.py --db <path>`. Default DB `~/.nutraigent/nutraigent.db` IS populated (all 3 sources, 11,104 foods; test profile/log entries removed).
 - `state` derived from 'raw'/'cooked' words only (1386 raw, 1778 cooked, 4629 unknown). `edible_portion_pct` NULL for SR (not in CSV).
 - Only 12 nutrients mapped; extend `NUTRIENT_MAP` + `CORE_NUTRIENTS` in `app/db.py` for more vitamins/minerals.
 
@@ -41,7 +42,7 @@
 
 ## Next steps
 1. Importers: SR Legacy DONE (`backend/scripts/import_usda_sr_legacy.py`). CoFID DONE (`backend/scripts/import_cofid.py`). Foundation DONE (`backend/scripts/import_usda_foundation.py`). All 3 importers done. Also TODO: populate default DB, add `openpyxl` to pyproject, merge/dedupe same food across sources (none yet).
-2. Frontend: profile form, food search, intake logging, target trace display.
+2. Frontend polish: edit logged grams, multi-day view, surface 'trace' flag in analysis, unit caveat for CoFID per-100ml drinks, merge/dedupe foods across sources.
 3. Micronutrient targets once reference standard chosen.
 4. Roadmap phase 2: BYOK AI provider interface.
 

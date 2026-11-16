@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date as date_cls
 from typing import Literal
 
@@ -56,11 +57,19 @@ def health():
 @app.get("/api/foods")
 def search_foods(q: str = Query("", max_length=100), limit: int = Query(25, le=100),
                  conn=Depends(get_conn)):
+    # Every whitespace/comma separated token must start a word in the name (any order).
+    tokens = [t for t in re.split(r"[\s,]+", q.strip()) if t]
+    esc = lambda t: t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    padded = "(' ' || replace(replace(replace(f.name, ',', ' '), '(', ' '), '-', ' '))"
+    where = " AND ".join(f"{padded} LIKE ? ESCAPE '\\'" for _ in tokens) or "1=1"
+    params = [f"% {esc(t)}%" for t in tokens]
+    first = f"{esc(tokens[0])}%" if tokens else "%"
     rows = conn.execute(
-        """SELECT f.id, f.name, f.state, f.edible_portion_pct, s.code AS source
+        f"""SELECT f.id, f.name, f.state, f.edible_portion_pct, s.code AS source
            FROM foods f JOIN sources s ON s.id = f.source_id
-           WHERE f.name LIKE ? ORDER BY f.name LIMIT ?""",
-        (f"%{q}%", limit),
+           WHERE {where}
+           ORDER BY (f.name LIKE ? ESCAPE '\\') DESC, length(f.name), f.name LIMIT ?""",
+        (*params, first, limit),
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -73,10 +82,13 @@ def get_food(food_id: int, conn=Depends(get_conn)):
     if f is None:
         raise HTTPException(404, "food not found")
     nuts = conn.execute(
-        """SELECT n.code, n.name, n.unit, fn.value_per_100g AS value
+        """SELECT n.code, n.name, n.unit, fn.value_per_100g AS value, fn.qualifier
            FROM nutrients n LEFT JOIN food_nutrients fn ON fn.nutrient_id = n.id AND fn.food_id = ?
            ORDER BY n.id""", (food_id,)).fetchall()
-    return {**dict(f), "nutrients": [dict(n) for n in nuts]}  # value null = missing
+    portions = conn.execute(
+        "SELECT id, description, grams FROM portions WHERE food_id = ? ORDER BY id", (food_id,)).fetchall()
+    return {**dict(f), "nutrients": [dict(n) for n in nuts],  # value null = missing
+            "portions": [dict(p) for p in portions]}
 
 
 @app.put("/api/profile")
