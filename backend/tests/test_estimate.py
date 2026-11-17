@@ -25,7 +25,7 @@ def conn():
 def test_missing_foods_lists_only_gaps(conn):
     foods = estimate.missing_foods(conn, "2026-01-02")
     by_name = {f["name"]: f["missing"] for f in foods}
-    assert by_name["Milk"] == ["iron_mg", "vitamin_c_mg", "vitamin_b12_ug"]  # calcium present, not estimated
+    assert by_name["Milk"] == [c for c in estimate.ESTIMATE_CODES if c != "calcium_mg"]  # calcium present
     assert by_name["Rice"] == list(estimate.ESTIMATE_CODES)
 
 
@@ -45,7 +45,9 @@ def test_estimate_fills_only_missing_and_flags_them(conn):
     intake = analysis.daily_intake(conn, "2026-01-02")
     assert intake["totals"]["iron_mg"]["estimated"] is True
     assert intake["totals"]["calcium_mg"]["estimated"] is True  # Rice's calcium is an estimate
-    assert estimate.missing_foods(conn, "2026-01-02")[0]["missing"] == ["iron_mg"]  # Rice iron still missing
+    rice_missing = {f["name"]: f["missing"] for f in estimate.missing_foods(conn, "2026-01-02")}["Rice"]
+    assert rice_missing == [c for c in estimate.ESTIMATE_CODES if c not in ("calcium_mg", "vitamin_c_mg", "vitamin_b12_ug")]
+    assert "iron_mg" in rice_missing  # out-of-range answer dropped, still missing
 
 
 def test_unanswered_foods_reported(conn):

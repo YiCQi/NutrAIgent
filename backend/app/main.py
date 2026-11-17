@@ -144,7 +144,7 @@ def get_intake(log_date: date_cls, conn=Depends(get_conn)):
 
 @app.post("/api/intake/{log_date}/estimate")
 def estimate_intake(log_date: date_cls, conn=Depends(get_conn), make=Depends(get_provider_factory)):
-    """Fill missing calcium/iron/vitamin C/B12 of the day's foods with AI estimates (flagged estimated)."""
+    """Fill missing nutrients (ESTIMATE_CODES) of the day's foods with AI estimates (flagged estimated)."""
     foods = estimate.missing_foods(conn, log_date.isoformat())
     if not foods:
         return {"stored": 0, "unanswered": [], "foods": 0}

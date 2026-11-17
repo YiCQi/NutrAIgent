@@ -36,6 +36,22 @@ NUTRIENT_MAP = {
     1089: ("iron_mg", "MG"),
     1162: ("vitamin_c_mg", "MG"),
     1178: ("vitamin_b12_ug", "UG"),
+    1404: ("ala_g", "G"),
+    1278: ("epa_g", "G"),
+    1272: ("dha_g", "G"),
+    1269: ("linoleic_g", "G"),
+    1253: ("cholesterol_mg", "MG"),
+    1092: ("potassium_mg", "MG"),
+    1090: ("magnesium_mg", "MG"),
+    1091: ("phosphorus_mg", "MG"),
+    1095: ("zinc_mg", "MG"),
+    1103: ("selenium_ug", "UG"),
+    1100: ("iodine_ug", "UG"),
+    1106: ("vitamin_a_ug", "UG"),
+    1114: ("vitamin_d_ug", "UG"),
+    1109: ("vitamin_e_mg", "MG"),
+    1185: ("vitamin_k_ug", "UG"),
+    1177: ("folate_ug", "UG"),
 }
 UNIT_MAP = {"KCAL": "kcal", "G": "g", "MG": "mg", "UG": "ug"}
 

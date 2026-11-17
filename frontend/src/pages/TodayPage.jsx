@@ -6,8 +6,17 @@ import RecommendCard from "./RecommendCard.jsx";
 
 const MEALS = ["breakfast", "lunch", "dinner", "snack", "other"];
 const MACROS = [["protein_g", "var(--protein)"], ["carbohydrate_g", "var(--carbs)"], ["fat_g", "var(--fat)"]];
-const ESTIMATE_CODES = ["calcium_mg", "iron_mg", "vitamin_c_mg", "vitamin_b12_ug"];
+// Must match backend app/estimate.py ESTIMATE_CODES.
+const ESTIMATE_CODES = ["calcium_mg", "iron_mg", "vitamin_c_mg", "vitamin_b12_ug",
+  "ala_g", "epa_g", "dha_g", "linoleic_g", "cholesterol_mg", "potassium_mg", "magnesium_mg",
+  "phosphorus_mg", "zinc_mg", "selenium_ug", "iodine_ug", "vitamin_a_ug", "vitamin_d_ug",
+  "vitamin_e_mg", "vitamin_k_ug", "folate_ug"];
 
+// Main nutrients shown by default; everything else appears under "show all".
+const CORE_CODES = ["energy_kcal", "protein_g", "carbohydrate_g", "fat_g", "fibre_g", "sugars_g", "sat_fat_g",
+  "sodium_mg", "calcium_mg", "iron_mg", "vitamin_c_mg", "vitamin_b12_ug"];
+
+const unitLabel = (u) => (u === "ug" ? "µg" : u);
 const fmtAmt = (v) => (v >= 10 ? Math.round(v) : Number(v.toFixed(2)));
 
 // Hover/focus popover listing which logged foods contribute to one nutrient.
@@ -71,6 +80,7 @@ export default function TodayPage({ refreshKey, go }) {
     catch (e) { setEditErr(e.message); }
   };
   const [estBusy, setEstBusy] = useState(false);
+  const [showAllNut, setShowAllNut] = useState(false);
   const [estMsg, setEstMsg] = useState("");
   const estimate = async () => {
     setEstBusy(true); setEstMsg("");
@@ -144,6 +154,9 @@ export default function TodayPage({ refreshKey, go }) {
             <div className="card">
               <details open>
                 <summary>{t("today.details")}</summary>
+                {Object.values(data.totals).some((tot) => tot.estimated) && (
+                  <div className="ai-notice">{t("today.aiNotice")}</div>
+                )}
                 {ESTIMATE_CODES.some((c) => data.totals[c]?.missing_entries.length > 0) && (
                   <div className="row" style={{ flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                     <button className="btn sm ghost" onClick={estimate} disabled={estBusy}>
@@ -155,13 +168,13 @@ export default function TodayPage({ refreshKey, go }) {
                 <table style={{ marginTop: 8 }}>
                   <thead><tr><th /><th className="num">{t("today.intake")}</th><th className="num">{t("today.targetCol")}</th><th style={{ width: "26%" }} /><th /></tr></thead>
                   <tbody>
-                    {Object.entries(data.totals).map(([code, tot]) => {
+                    {Object.entries(data.totals).filter(([code]) => showAllNut || CORE_CODES.includes(code)).map(([code, tot]) => {
                       const c = cmp[code];
                       return (
                         <tr key={code}>
                           <td><SourceTip entries={data.entries} code={code} unit={tot.unit}>{nutrient(code)}</SourceTip>{c?.kind === "max" ? <small> ({t("today.max")})</small> : null}{tot.estimated ? <span className="chip predicted" style={{ marginLeft: 6 }}>{t("today.aiPredicted")}</span> : null}</td>
-                          <td className="num">{tot.value} {tot.unit}</td>
-                          <td className="num">{c ? `${c.target} ${c.unit}` : "—"}</td>
+                          <td className="num">{tot.value} {unitLabel(tot.unit)}</td>
+                          <td className="num">{c ? `${c.target} ${unitLabel(c.unit)}` : "—"}</td>
                           <td>{c ? <Bar className="minibar" value={tot.value} max={c.target} color={c.status === "excess" ? "var(--danger)" : "var(--accent)"} /> : null}</td>
                           <td>
                             {c ? <span className={`chip ${c.status}`}>{t(`status.${c.status}`)}</span> : tot.missing_entries.length ? <span className="chip unknown">{t("status.unknown")}</span> : null}
@@ -172,6 +185,9 @@ export default function TodayPage({ refreshKey, go }) {
                     })}
                   </tbody>
                 </table>
+                <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => setShowAllNut((v) => !v)}>
+                  {showAllNut ? t("today.showCore") : t("today.showAll")}
+                </button>
                 <small>{t("today.incomplete")}</small>
               </details>
             </div>

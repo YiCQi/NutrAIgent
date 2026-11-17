@@ -36,18 +36,22 @@ def make_xlsx(path):
     _sheet(wb, "1.3 Proximates",
            [("Energy (kcal) (kcal)", "KCALS"), ("Protein (g)", "PROT"), ("Carbohydrate (g)", "CHO"),
             ("Fat (g)", "FAT"), ("AOAC fibre (g)", "AOACFIB"), ("Total sugars (g)", "TOTSUG"),
-            ("Satd FA /100g fd (g)", "SATFOD")],
-           [["1-1", "Oats, raw", None, None, None, None, None, "380", 12, 60, 7, "Tr", "N", None],
-            ["1-2", "Salt", None, None, None, None, None, 0, 0, 0, 0, 0, 0, 0],
-            ["1-2", "Pepper", None, None, None, None, None, 250, 10, 60, 3, 25, 0.6, 1]])
-    _sheet(wb, "1.4 Inorganics", [("Sodium (mg)", "NA"), ("Calcium (mg)", "CA"), ("Iron (mg)", "FE")],
-           [["1-1", "Oats, raw", None, None, None, None, None, 5, 50, 4],
-            ["1-2", "Salt", None, None, None, None, None, 39000, 0, 0],
-            ["1-2", "Pepper", None, None, None, None, None, 20, 400, 10]])
-    _sheet(wb, "1.5 Vitamins", [("Vitamin B12 (µg)", "VITB12"), ("Vitamin C (mg)", "VITC")],
-           [["1-1", "Oats, raw", None, None, None, None, None, 0, "Tr"],
-            ["1-2", "Salt", None, None, None, None, None, None, None],
-            ["1-2", "Pepper", None, None, None, None, None, 0, 21]])
+            ("Satd FA /100g fd (g)", "SATFOD"), ("Cholesterol", "CHOL")],
+           [["1-1", "Oats, raw", None, None, None, None, None, "380", 12, 60, 7, "Tr", "N", None, 0],
+            ["1-2", "Salt", None, None, None, None, None, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["1-2", "Pepper", None, None, None, None, None, 250, 10, 60, 3, 25, 0.6, 1, 12]])
+    _sheet(wb, "1.4 Inorganics", [("Sodium (mg)", "NA"), ("Calcium (mg)", "CA"), ("Iron (mg)", "FE"),
+                                  ("Potassium (mg)", "K"), ("Magnesium (mg)", "MG"), ("Phosphorus (mg)", "P"),
+                                  ("Zinc (mg)", "ZN"), ("Selenium (µg)", "SE"), ("Iodine (µg)", "I")],
+           [["1-1", "Oats, raw", None, None, None, None, None, 5, 50, 4, 350, 120, 200, 1.5, None, None],
+            ["1-2", "Salt", None, None, None, None, None, 39000, 0, 0, 0, 0, 0, 0, 0, 0],
+            ["1-2", "Pepper", None, None, None, None, None, 20, 400, 10, 900, 60, 300, 0.8, 3, 2]])
+    _sheet(wb, "1.5 Vitamins", [("Vitamin B12 (µg)", "VITB12"), ("Vitamin C (mg)", "VITC"), ("Folate (µg)", "FOLT"),
+                                ("Retinol Equivalent (µg)", "RETEQU"), ("Vitamin D (µg)", "VITD"),
+                                ("Vitamin E (mg)", "VITE"), ("Vitamin K1 (µg)", "VITK1")],
+           [["1-1", "Oats, raw", None, None, None, None, None, 0, "Tr", 40, 12, 0.1, 0.5, 1.5],
+            ["1-2", "Salt", None, None, None, None, None, None, None, None, None, None, None, None],
+            ["1-2", "Pepper", None, None, None, None, None, 0, 21, 0, None, None, None, None]])
     wb.save(path)
 
 
@@ -74,6 +78,12 @@ def test_cofid_import(tmp_path):
     assert val("Oats, raw", "sat_fat_g") is None                        # blank -> missing
     assert tuple(val("Salt", "energy_kcal")) == (0.0, None)             # measured zero
     assert val("Salt", "vitamin_c_mg") is None
+    assert tuple(val("Oats, raw", "cholesterol_mg")) == (0.0, None)     # header without unit -> mg
+    assert tuple(val("Pepper", "potassium_mg")) == (900.0, None)
+    assert tuple(val("Pepper", "selenium_ug")) == (3.0, None)
+    assert tuple(val("Oats, raw", "folate_ug")) == (40.0, None)
+    assert tuple(val("Oats, raw", "vitamin_k_ug")) == (1.5, None)
+    assert tuple(val("Oats, raw", "vitamin_a_ug")) == (12.0, None)
     assert tuple(val("Pepper", "calcium_mg")) == (400.0, None)          # duplicate code joined by name
     edible = {r[0]: r[1] for r in conn.execute("SELECT name, edible_portion_pct FROM foods")}
     assert edible == {"Oats, raw": 90.0, "Salt": None, "Pepper": 100.0}
