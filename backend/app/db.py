@@ -18,6 +18,23 @@ CORE_NUTRIENTS = [
     ("iron_mg", "Iron", "mg", "mineral"),
     ("vitamin_c_mg", "Vitamin C", "mg", "vitamin"),
     ("vitamin_b12_ug", "Vitamin B12", "ug", "vitamin"),
+    # Extended set (display; targets not set). Sources: USDA SR Legacy / Foundation FDC ids, CoFID tags.
+    ("ala_g", "Omega-3 ALA", "g", "fatty_acid"),
+    ("epa_g", "Omega-3 EPA", "g", "fatty_acid"),
+    ("dha_g", "Omega-3 DHA", "g", "fatty_acid"),
+    ("linoleic_g", "Omega-6 linoleic", "g", "fatty_acid"),
+    ("cholesterol_mg", "Cholesterol", "mg", "other"),
+    ("potassium_mg", "Potassium", "mg", "mineral"),
+    ("magnesium_mg", "Magnesium", "mg", "mineral"),
+    ("phosphorus_mg", "Phosphorus", "mg", "mineral"),
+    ("zinc_mg", "Zinc", "mg", "mineral"),
+    ("selenium_ug", "Selenium", "ug", "mineral"),
+    ("iodine_ug", "Iodine", "ug", "mineral"),
+    ("vitamin_a_ug", "Vitamin A (RAE)", "ug", "vitamin"),
+    ("vitamin_d_ug", "Vitamin D", "ug", "vitamin"),
+    ("vitamin_e_mg", "Vitamin E", "mg", "vitamin"),
+    ("vitamin_k_ug", "Vitamin K", "ug", "vitamin"),
+    ("folate_ug", "Folate", "ug", "vitamin"),
 ]
 
 

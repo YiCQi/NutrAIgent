@@ -24,6 +24,17 @@ IRON_MG = {"male": 8.7, "female": 14.8}
 VITAMIN_C_MG = 40.0
 VITAMIN_B12_UG = 1.5
 KCAL_PER_G = {"protein": 4, "carb": 4, "fat": 9}
+# Further reference values. Sex-neutral daily values from Regulation (EU) No 1169/2011 Annex XIII (UK copy on
+# legislation.gov.uk). They are labelling NRVs, not RNIs; used here as provisional daily targets.
+NRV_TARGETS = {
+    "vitamin_a_ug": 800.0, "vitamin_d_ug": 5.0, "vitamin_e_mg": 12.0, "vitamin_k_ug": 75.0,
+    "folate_ug": 200.0, "potassium_mg": 2000.0, "magnesium_mg": 375.0, "phosphorus_mg": 700.0,
+    "zinc_mg": 10.0, "selenium_ug": 55.0, "iodine_ug": 150.0,
+}
+# EFSA 2010 DRVs for fats (EFSA Journal 2010;8(3):1461): AI EPA+DHA 250 mg/day; ALA 0.5 E%; linoleic acid 4 E%.
+EPA_DHA_AI_G = 0.25
+ALA_E_PCT = 0.5
+LINOLEIC_E_PCT = 4.0
 
 
 @dataclass(frozen=True)
@@ -72,6 +83,10 @@ def compute_targets(p: Profile) -> dict:
             "iron_mg": {"value": IRON_MG[p.sex], "unit": "mg", "kind": "min"},
             "vitamin_c_mg": {"value": VITAMIN_C_MG, "unit": "mg", "kind": "min"},
             "vitamin_b12_ug": {"value": VITAMIN_B12_UG, "unit": "ug", "kind": "min"},
+            **{code: {"value": v, "unit": code.rsplit("_", 1)[1], "kind": "min"} for code, v in NRV_TARGETS.items()},
+            "epa_dha_g": {"value": EPA_DHA_AI_G, "unit": "g", "kind": "min"},
+            "ala_g": {"value": round(energy * ALA_E_PCT / 100 / KCAL_PER_G["fat"], 2), "unit": "g", "kind": "min"},
+            "linoleic_g": {"value": round(energy * LINOLEIC_E_PCT / 100 / KCAL_PER_G["fat"], 2), "unit": "g", "kind": "min"},
         },
         "trace": {
             "bmr_kcal": r(bmr),

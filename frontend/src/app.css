@@ -85,6 +85,7 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: .85rem
 .chip.deficient, .chip.excess { background: var(--danger-soft); color: var(--danger); }
 .chip.unknown { background: var(--info-soft); color: var(--muted); }
 .chip.predicted { background: var(--warn-soft); color: var(--warn); }
+.ai-notice { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 13px; }
 .nut-block tr.sub td { font-weight: 600; border-top: 1px solid var(--border); }
 .nut-block td:not(:first-child) { white-space: nowrap; }
 .ok-text { color: var(--accent-strong); } .err { color: var(--danger); } .warn { color: var(--warn); }

@@ -43,11 +43,33 @@ NUTRIENT_MAP = {
     ("1.4 Inorganics", "CA"): "calcium_mg",
     ("1.4 Inorganics", "FE"): "iron_mg",
     ("1.5 Vitamins", "VITC"): "vitamin_c_mg",
+    ("1.3 Proximates", "CHOL"): "cholesterol_mg",
+    ("1.4 Inorganics", "K"): "potassium_mg",
+    ("1.4 Inorganics", "MG"): "magnesium_mg",
+    ("1.4 Inorganics", "P"): "phosphorus_mg",
+    ("1.4 Inorganics", "ZN"): "zinc_mg",
+    ("1.4 Inorganics", "SE"): "selenium_ug",
+    ("1.4 Inorganics", "I"): "iodine_ug",
+    ("1.5 Vitamins", "RETEQU"): "vitamin_a_ug",
+    ("1.5 Vitamins", "VITD"): "vitamin_d_ug",
+    ("1.5 Vitamins", "VITE"): "vitamin_e_mg",
+    ("1.5 Vitamins", "VITK1"): "vitamin_k_ug",
+    ("1.5 Vitamins", "FOLT"): "folate_ug",
     ("1.5 Vitamins", "VITB12"): "vitamin_b12_ug",
 }
 # Units are checked against the sheet's header text, e.g. 'Sodium (mg)'.
 UNIT_RE = re.compile(r"\((kcal|g|mg|µg|ug)\)\s*$")
 UNIT_NORM = {"kcal": "kcal", "g": "g", "mg": "mg", "µg": "ug", "ug": "ug"}
+# Sheet headers without a unit. CoFID 1.3 'Cholesterol' has no unit in its header; the dataset reports
+# cholesterol in mg per 100 g (assumption, to confirm against the CoFID user guide).
+UNIT_OVERRIDE = {("1.3 Proximates", "CHOL"): "mg"}
+
+
+def column_unit(sheet, tag, header):
+    if (sheet, tag) in UNIT_OVERRIDE:
+        return UNIT_OVERRIDE[(sheet, tag)]
+    m = UNIT_RE.search(str(header))
+    return UNIT_NORM.get(m.group(1)) if m else None
 
 
 def derive_state(text: str) -> str:
@@ -124,8 +146,7 @@ def run(xlsx: Path, conn) -> dict:
         for i, t in enumerate(tags):
             if (sheet, t) in NUTRIENT_MAP:
                 code = NUTRIENT_MAP[(sheet, t)]
-                m = UNIT_RE.search(str(hdr[i]))
-                unit = UNIT_NORM.get(m.group(1)) if m else None
+                unit = column_unit(sheet, t, hdr[i])
                 if unit != nut_unit[code]:
                     raise SystemExit(f"unit mismatch {sheet}/{t}: header {hdr[i]!r} vs {nut_unit[code]}")
                 cols[i] = code

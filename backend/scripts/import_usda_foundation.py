@@ -41,6 +41,22 @@ NUTRIENT_MAP = {
     "iron_mg": [1089],
     "vitamin_c_mg": [1162],
     "vitamin_b12_ug": [1178],
+    "ala_g": [1404],
+    "epa_g": [1278],
+    "dha_g": [1272],
+    "linoleic_g": [1269],
+    "cholesterol_mg": [1253],
+    "potassium_mg": [1092],
+    "magnesium_mg": [1090],
+    "phosphorus_mg": [1091],
+    "zinc_mg": [1095],
+    "selenium_ug": [1103],
+    "iodine_ug": [1100],
+    "vitamin_a_ug": [1106],
+    "vitamin_d_ug": [1114],
+    "vitamin_e_mg": [1109],
+    "vitamin_k_ug": [1185],
+    "folate_ug": [1177],
 }
 
 
