@@ -177,7 +177,8 @@ export default function TodayPage({ refreshKey, go }) {
                           <td className="num">{c ? `${c.target} ${unitLabel(c.unit)}` : "—"}</td>
                           <td>{c ? <Bar className="minibar" value={tot.value} max={c.target} color={c.status === "excess" ? "var(--danger)" : "var(--accent)"} /> : null}</td>
                           <td>
-                            {c ? <span className={`chip ${c.status}`}>{t(`status.${c.status}`)}</span> : tot.missing_entries.length ? <span className="chip unknown">{t("status.unknown")}</span> : null}
+                            {c && c.status !== "unknown" ? <span className={`chip ${c.status}`}>{t(`status.${c.status}`)}</span> : null}
+                            {tot.missing_entries.length > 0 && (!c || c.status === "unknown") ? <span className="warn" title={t("today.incomplete")}>⚠</span> : null}
                             {tot.missing_entries.length > 0 && c && c.status !== "unknown" ? <small title={t("today.incomplete")}> ⚠</small> : null}
                           </td>
                         </tr>
