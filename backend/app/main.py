@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from . import estimate, featured, foods, jobs, plans_api, presence, recipes_api, recommend_api
 from .deps import get_conn, get_provider_factory
-from .ai import chatflow, providers
+from .ai import chatflow, edits, providers
 from .engine import analysis, targets
 
 NL = chr(10)
@@ -249,6 +249,32 @@ def set_proposal_status(message_id: int, body: StatusIn, conn=Depends(get_conn))
     conn.execute("UPDATE messages SET meta = ? WHERE id = ?", (json.dumps(meta), message_id))
     conn.commit()
     return {"id": message_id, "status": body.status}
+
+
+class ConfirmEditsIn(BaseModel):
+    include: list[int] | None = None  # indexes into the proposal's changes; None = all
+
+
+@app.post("/api/messages/{message_id}/confirm-edits")
+def confirm_edits(message_id: int, body: ConfirmEditsIn, conn=Depends(get_conn)):
+    """Apply the chosen changes of an edit proposal (from the chat) to that day's intake log."""
+    row = conn.execute("SELECT meta FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "message not found")
+    meta = json.loads(row["meta"] or "{}")
+    if meta.get("kind") != "edit":
+        raise HTTPException(400, "not an edit proposal")
+    if meta.get("status") != "pending":
+        raise HTTPException(409, "proposal already handled")
+    changes = meta.get("changes", [])
+    idx = range(len(changes)) if body.include is None else body.include
+    chosen = [changes[i] for i in idx if 0 <= i < len(changes)]
+    results = edits.apply(conn, meta["day"], chosen)
+    meta["status"] = "saved"
+    meta["results"] = results
+    conn.execute("UPDATE messages SET meta = ? WHERE id = ?", (json.dumps(meta), message_id))
+    conn.commit()
+    return {"id": message_id, "status": "saved", "results": results}
 
 
 @app.post("/api/conversations/{conv_id}/chat")

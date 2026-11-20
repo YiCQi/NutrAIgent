@@ -26,10 +26,13 @@ def assess(conn: sqlite3.Connection, day: str) -> dict:
     for c in comp:
         if c["status"] == "unknown":
             unknown.append(c["nutrient"])
-        if c["kind"] in ("target", "min") and c["status"] in SHORT_STATUSES:
+        # Below target on the data we have counts as short even when some logged food lacks data: the real
+        # total can only be higher, so this is flagged 'incomplete' rather than dropped.
+        incomplete_short = c["status"] == "unknown" and c["percent"] is not None and c["percent"] < 100
+        if c["kind"] in ("target", "min") and (c["status"] in SHORT_STATUSES or incomplete_short):
             short.append({"nutrient": c["nutrient"], "unit": c["unit"], "intake": c["intake"],
                           "target": c["target"], "percent": c["percent"],
-                          "gap": round(c["target"] - c["intake"], 1)})
+                          "gap": round(c["target"] - c["intake"], 1), "incomplete": incomplete_short})
         if c["status"] == "excess" and c["nutrient"] != ENERGY:
             excess.append({"nutrient": c["nutrient"], "unit": c["unit"], "intake": c["intake"], "limit": c["target"]})
     e = next((c for c in comp if c["nutrient"] == ENERGY), None)

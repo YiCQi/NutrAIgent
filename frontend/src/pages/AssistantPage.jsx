@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { useI18n } from "../i18n.jsx";
 import { Icon } from "../ui.jsx";
 import Proposals from "./Proposals.jsx";
+import EditProposals from "./EditProposals.jsx";
 
 const HINT = {
   anthropic: { model: "claude-haiku-5-5", url: "https://api.anthropic.com" },
@@ -122,6 +123,7 @@ function ChatPane({ convId, ready, onTitleChange, onLogged }) {
           <div key={m.id} className={`bubble ${m.role}`}>
             {body(m)}
             {m.role === "assistant" && m.meta?.proposals?.length > 0 && <Proposals message={m} onSaved={onLogged} />}
+            {m.role === "assistant" && m.meta?.kind === "edit" && m.meta?.changes?.length > 0 && <EditProposals message={m} onSaved={onLogged} />}
           </div>
         ))}
         {busy && (

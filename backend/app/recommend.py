@@ -64,7 +64,9 @@ def _prefs(conn) -> str:
 def _prompt(conn, a: dict, lang: str) -> str:
     names = {r["code"]: r["name"] for r in conn.execute("SELECT code, name FROM nutrients")}
     short = [f"- {names.get(s['nutrient'], s['nutrient'])}: {s['gap']} {s['unit']} short"
-             + (" (also short yesterday)" if s.get("repeated") else "") for s in a["short"]]
+             + (" (also short yesterday)" if s.get("repeated") else "")
+             + (" (some logged food has no data here, so the real amount may be higher)" if s.get("incomplete") else "")
+             for s in a["short"]]
     excess = [names.get(x["nutrient"], x["nutrient"]) for x in a["excess"]]
     repeated = [names.get(s["nutrient"], s["nutrient"]) for s in a["short"] if s.get("repeated")]
     recipe_names = recipes.names(conn)

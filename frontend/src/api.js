@@ -67,6 +67,7 @@ export const api = {
   getConv: (id) => req("GET", `/api/conversations/${id}`),
   deleteConv: (id) => req("DELETE", `/api/conversations/${id}`),
   setProposalStatus: (messageId, status) => req("PATCH", `/api/messages/${messageId}/status`, { status }),
+  confirmEdits: (messageId, include) => req("POST", `/api/messages/${messageId}/confirm-edits`, { include }),
   chatStream: (convId, content, lang, onEvent) => streamPost(`/api/conversations/${convId}/chat`, { content, lang }, onEvent),
   listPlans: () => req("GET", "/api/plans"),
   getPlan: (id) => req("GET", `/api/plans/${id}`),

@@ -102,3 +102,14 @@ def test_agent_gap_flow_uses_tools(conn):
     fed_back = json.dumps(p.seen[2][1])  # tool results (DB numbers) reached the model
     assert "covers_short_percent" in fed_back and "fibre_g" in fed_back
     assert "get_nutrient_gaps" in agent.SYSTEM
+
+
+def test_incomplete_shortfall_counts_as_short_and_is_flagged(conn):
+    # Soy sauce has no fibre: fibre is 'unknown' (below target, data incomplete) -> still a short nutrient, flagged
+    conn.execute("INSERT INTO intake_log (log_date, meal, food_id, grams) VALUES ('2026-01-02','lunch',2,20)")
+    conn.commit()
+    a = gaps.assess(conn, "2026-01-02")
+    fibre = next(s for s in a["short"] if s["nutrient"] == "fibre_g")
+    assert fibre["incomplete"] is True
+    assert "fibre_g" in a["unknown"]
+    assert all("incomplete" in s for s in a["short"])

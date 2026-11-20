@@ -47,7 +47,13 @@ ITEM = {"label":"the food as the user wrote it",
 Ask when the amount of a MAIN item is unclear, or when the food is ambiguous. Never ask about seasonings or sauces: predict them (see above). Put all missing points in ONE short message with a brief example of an acceptable answer.
 Do NOT ask again if an earlier assistant message already asked and the user answered or said they do not know / skip: then proceed with typical estimates. Do NOT ask about trivial items (a coffee, a piece of fruit): use typical amounts.
 
-3) Anything else (questions, advice, intake or targets queries, chat): {"intent":"chat"}
+3) The user wants to change or delete food ALREADY logged today (remove an item, correct grams, move it to another meal):
+{"intent":"edit","changes":[{"entry_id":N,"action":"delete"},{"entry_id":N,"action":"grams","grams":number},{"entry_id":N,"action":"meal","meal":"breakfast|lunch|dinner|snack|other"}]}
+- entry_id must be one of the "#id" numbers in "Already logged today". Never invent ids.
+- Adding food the user has not logged yet is intent "log", not "edit".
+- "Change X to 150 g" / "delete the rice" refer to logged entries: use "edit".
+
+4) Anything else (questions, advice, intake or targets queries, chat): {"intent":"chat"}
 
 Database food names are English (USDA/UK style, e.g. "Rice, white, cooked", "Soy sauce", "Salt, table"). Never output nutrient values."""
 
@@ -70,6 +76,8 @@ def parse(provider: Provider, history: list[dict], today: str, lang: str = "en",
     if not isinstance(data, dict):
         return {"intent": "chat"}
     if data.get("intent") == "log":
+        return data
+    if data.get("intent") == "edit" and isinstance(data.get("changes"), list) and data["changes"]:
         return data
     if data.get("intent") == "ask" and isinstance(data.get("question"), str) and data["question"].strip():
         return data

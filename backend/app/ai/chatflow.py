@@ -3,7 +3,7 @@ import json
 import sqlite3
 
 from .. import recipes
-from . import agent, nllog, tools
+from . import agent, edits, nllog, tools
 from .providers import Provider, ProviderError
 
 HISTORY_LIMIT = 20
@@ -49,13 +49,19 @@ def _run_turn(conn: sqlite3.Connection, provider: Provider, conv_id: int, conten
     history = [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
 
     yield {"type": "status", "key": "understanding"}
-    logged = [f"{r['name']} {r['grams']:g} g ({r['meal']})" for r in conn.execute(
-        "SELECT f.name, l.grams, l.meal FROM intake_log l JOIN foods f ON f.id = l.food_id "
-        "WHERE l.log_date = ? ORDER BY l.id", (today,))][-40:]
+    logged = edits.logged_for_prompt(conn, today)[-40:]
     parsed = nllog.parse(provider, history, today, lang, recipes.names(conn), logged)
 
     if parsed["intent"] == "ask":
         reply, meta = parsed["question"].strip(), {"kind": "ask"}
+    elif parsed["intent"] == "edit":
+        changes, dropped = edits.build(conn, parsed["changes"], today)
+        if changes:
+            n = len(changes)
+            reply = f"Found {n} change{'s' if n != 1 else ''} to today's log. Review, then confirm."
+            meta = {"kind": "edit", "day": today, "changes": changes, "status": "pending"}
+        else:
+            reply, meta = "I could not match that to today's logged food. Tell me the food name or the amount.", {"kind": "ask"}
     elif parsed["intent"] == "log" and parsed.get("items"):
         proposals = []
         for kind, val in nllog.build_proposals(conn, parsed, today):
